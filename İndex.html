@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>💘</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      overflow: hidden;
+    }
+
+    .card {
+      background: #020617;
+      padding: 32px 24px;
+      border-radius: 18px;
+      width: min(520px, 92vw);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 26px 0;
+      font-size: clamp(20px, 4vw, 28px);
+      line-height: 1.25;
+    }
+
+    .arena {
+      position: relative;
+      height: 240px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,.2);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    button {
+      font-size: 20px;
+      padding: 14px 22px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 800;
+      box-shadow: 0 12px 30px rgba(0,0,0,.5);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .yes {
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      color: #052e12;
+      position: relative;
+      z-index: 2;
+    }
+
+    .no {
+      position: absolute;
+      background: linear-gradient(180deg, #ef4444, #dc2626);
+      color: white;
+      left: 50%;
+      top: 65%;
+      transform: translate(-50%, -50%) scale(1);
+      z-index: 3; /* evet'in arkasına girmez */
+      transition: left .08s linear, top .08s linear, transform .08s linear;
+      will-change: left, top, transform;
+    }
+
+    .result {
+      margin-top: 22px;
+      font-size: 22px;
+      display: none;
+    }
+    .result.show { display: block; }
+
+    .phone {
+      margin-top: 10px;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #22c55e;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Efeyle (beyaz atlı prens) sevgili olmayı düşünür müydün</h1>
+
+    <div class="arena" id="arena">
+      <button class="yes" id="yesBtn">❤️ Evet ❤️</button>
+      <button class="no" id="noBtn">Hayır 😡</button>
+    </div>
+
+    <div class="result" id="result">
+      💖 O zaman tamam 💖
+      <div class="phone">📞 0537 839 80 25</div>
+    </div>
+  </div>
+
+  <script>
+    const arena = document.getElementById("arena");
+    const noBtn  = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const result = document.getElementById("result");
+
+    let noScale = 1;       // Hayır küçülme oranı
+    let noClicks = 0;      // Hayır yakalanırsa say
+    let lastMove = 0;
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    function setNoScale(newScale){
+      noScale = clamp(newScale, 0.35, 1);
+      // translate(0,0) kullanıyoruz; scale direkt transformda
+      noBtn.style.transform = `translate(0,0) scale(${noScale})`;
+    }
+
+    // Evet butonunun alanını "yasak bölge" yap (üstüne gelmesin, arkasına da girmesin)
+    function rectsOverlap(r1, r2){
+      return !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
+    }
+
+    function moveNo(aggressive = false) {
+      const now = performance.now();
+      // Çok agresif modda bile saniyede 60 kez delirmesin
+      if (!aggressive && now - lastMove < 40) return;
+      lastMove = now;
+
+      const a = arena.getBoundingClientRect();
+
+      // no butonunu önce scale uygula ki ölçüm doğru olsun
+      // (style.transform zaten scale içeriyor)
+      const yesRectRaw = yesBtn.getBoundingClientRect();
+
+      // Evet'in etrafına güvenlik payı
+      const forbidPad = 22;
+      const forbidden = {
+        left: yesRectRaw.left - forbidPad,
+        right: yesRectRaw.right + forbidPad,
+        top: yesRectRaw.top - forbidPad,
+        bottom: yesRectRaw.bottom + forbidPad
+      };
+
+      const pad = 10;
+
+      // Deneme deneme: Evet'le çakışmayan bir yer bul
+      for (let i = 0; i < 40; i++) {
+        // Butonu geçici ölçmek için mevcut rect'i al
+        const b = noBtn.getBoundingClientRect();
+
+        const maxX = a.width - b.width - pad;
+        const maxY = a.height - b.height - pad;
+
+        const x = pad + Math.random() * Math.max(0, maxX);
+        const y = pad + Math.random() * Math.max(0, maxY);
+
+        // aday konumu sayfa koordinatına çevirip yasak bölgeyle çakışma kontrolü
+        const candidate = {
+          left: a.left + x,
+          right: a.left + x + b.width,
+          top: a.top + y,
+          bottom: a.top + y + b.height
+        };
+
+        if (!rectsOverlap(candidate, forbidden)) {
+          noBtn.style.left = x + "px";
+          noBtn.style.top  = y + "px";
+          // translate(-50,-50) değil, düz konum kullanıyoruz
+          noBtn.style.transform = `translate(0,0) scale(${noScale})`;
+          return;
+        }
+      }
+
+      // En kötü ihtimal: yine de rastgele koy
+      noBtn.style.left = (pad + Math.random() * (a.width - pad * 2)) + "px";
+      noBtn.style.top  = (pad + Math.random() * (a.height - pad * 2)) + "px";
+      noBtn.style.transform = `translate(0,0) scale(${noScale})`;
+    }
+
+    // Hayır'a basılırsa küçülsün (yakalamak zor ama mümkün)
+    function shrinkNo() {
+      noClicks++;
+      setNoScale(1 - noClicks * 0.08); // her basışta %8 küçül
+      moveNo(true); // küçülürken kaçsın
+    }
+
+    // Daha fazla kaçma: üstüne gelince anında
+    noBtn.addEventListener("mouseenter", () => moveNo(true));
+    noBtn.addEventListener("mousemove",  () => moveNo(true));
+
+    // Arena içinde yaklaşınca da kaçsın (daha “fazla kaçsın” modu)
+    arena.addEventListener("mousemove", (e) => {
+      const b = noBtn.getBoundingClientRect();
+      const cx = b.left + b.width / 2;
+      const cy = b.top + b.height / 2;
+
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+
+      // Mesafe eşik: yakınsan kaç
+      if (dist < 140) moveNo(true);
+    });
+
+    // Mobil: dokunma denemesinde kaç + küçülme de tetikle
+    noBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      // dokunmayı “basma girişimi” sayalım
+      shrinkNo();
+    }, { passive: false });
+
+    // Eğer biri mucizeyle tıklarsa da küçül
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      shrinkNo();
+    });
+
+    // Evet'e basınca: bildirim + numara
+    yesBtn.addEventListener("click", () => {
+      alert("Bence bunu kendisine haber vermen gerekiyor 😊");
+      result.classList.add("show");
+    });
+
+    // İlk pozisyon ve ilk scale
+    setNoScale(1);
+    moveNo(true);
+    window.addEventListener("resize", () => moveNo(true));
+  </script>
+</body>
+</html>
