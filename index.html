@@ -2,157 +2,733 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <title>💘</title>
+  <title>Cem Yılmaz Bilgi Yarışması</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <style>
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      margin: 0;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: white;
-      overflow: hidden;
+    :root {
+      --gold: #f5c842;
+      --gold-dark: #d4a910;
+      --bg: #0a0a0a;
+      --card: #141414;
+      --card2: #1e1e1e;
+      --text: #f0f0f0;
+      --muted: #888;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
     }
 
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* ---- SCREENS ---- */
+    .screen { display: none; width: 100%; max-width: 560px; animation: fadeIn .3s ease; }
+    .screen.active { display: flex; flex-direction: column; gap: 20px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ---- COMMON ---- */
     .card {
-      background: #020617;
-      padding: 32px 24px;
-      border-radius: 18px;
-      width: min(520px, 92vw);
-      box-shadow: 0 30px 70px rgba(0,0,0,.6);
-      text-align: center;
+      background: var(--card);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
     }
 
     h1 {
-      margin: 0 0 26px 0;
-      font-size: clamp(20px, 4vw, 28px);
-      line-height: 1.3;
+      font-size: clamp(22px, 5vw, 32px);
+      text-align: center;
+      color: var(--gold);
+      line-height: 1.25;
     }
 
-    .arena {
-      position: relative;
-      height: 240px;
+    h2 {
+      font-size: clamp(16px, 3.5vw, 22px);
+      color: var(--gold);
+    }
+
+    p { color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
       border-radius: 14px;
-      border: 1px dashed rgba(255,255,255,.2);
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      touch-action: none;
-    }
-
-    button {
-      font-size: 20px;
-      padding: 14px 22px;
-      border-radius: 999px;
       border: none;
       cursor: pointer;
-      font-weight: 800;
-      box-shadow: 0 12px 30px rgba(0,0,0,.5);
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
+      font-size: 17px;
+      font-weight: 700;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #1a1000;
     }
 
-    .yes {
-      background: linear-gradient(180deg, #22c55e, #16a34a);
-      color: #052e12;
-      position: relative;
-      z-index: 3;
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--gold);
+      color: var(--gold);
     }
 
-    .no {
-      position: absolute;
-      background: linear-gradient(180deg, #ef4444, #dc2626);
-      color: white;
+    /* ---- INTRO SCREEN ---- */
+    #screen-intro .emoji { font-size: 64px; text-align: center; }
+    #screen-intro .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    #screen-intro .rules {
+      background: var(--card2);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .rule-item { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+    .rule-item span.icon { font-size: 22px; flex-shrink: 0; }
+
+    /* ---- QUIZ SCREEN ---- */
+    .progress-bar-wrap {
+      background: #2a2a2a;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .meta-row .q-counter { font-weight: 700; color: var(--gold); font-size: 15px; }
+
+    /* Timer */
+    #timer-display {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--gold);
+      min-width: 40px;
+      text-align: center;
+      transition: color .3s;
+    }
+    #timer-display.warning { color: var(--red); animation: pulse .5s infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+    #question-text {
+      font-size: clamp(16px, 3.2vw, 20px);
+      font-weight: 600;
+      line-height: 1.5;
+      text-align: center;
+      min-height: 64px;
+    }
+
+    .category-badge {
+      display: inline-block;
+      background: #2a2a2a;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Options */
+    #options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .opt-btn {
+      background: var(--card2);
+      border: 2px solid #2e2e2e;
+      border-radius: 14px;
+      padding: 16px 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .15s, background .15s;
+      line-height: 1.4;
+    }
+    .opt-btn:hover:not(:disabled) { border-color: var(--gold); background: #252510; }
+    .opt-btn .opt-letter {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #333;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 26px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .opt-btn.correct { border-color: var(--green); background: #052e16; }
+    .opt-btn.correct .opt-letter { background: var(--green); color: #000; }
+    .opt-btn.wrong { border-color: var(--red); background: #2e0505; }
+    .opt-btn.wrong .opt-letter { background: var(--red); color: #fff; }
+    .opt-btn:disabled { cursor: default; }
+
+    /* Streak / score bar */
+    .score-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card2);
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+    .score-strip .lbl { color: var(--muted); font-size: 13px; flex: 1; }
+    .score-strip .val { font-size: 20px; font-weight: 900; color: var(--gold); }
+
+    /* Feedback toast */
+    #feedback {
+      position: fixed;
+      top: 20px;
       left: 50%;
-      top: 65%;
-      transform: translate(-50%, -50%) scale(1);
-      z-index: 4;
-      transition: left .08s linear, top .08s linear, transform .08s linear;
-      will-change: left, top, transform;
+      transform: translateX(-50%) translateY(-80px);
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      transition: transform .3s ease;
+      z-index: 999;
+      white-space: nowrap;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5);
     }
+    #feedback.show { transform: translateX(-50%) translateY(0); }
+    #feedback.correct { border: 2px solid var(--green); color: var(--green); }
+    #feedback.wrong { border: 2px solid var(--red); color: var(--red); }
+
+    /* ---- RESULT SCREEN ---- */
+    .grade-circle {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: conic-gradient(var(--gold) calc(var(--pct) * 3.6deg), #2a2a2a 0deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--gold);
+      position: relative;
+    }
+    .grade-circle::after {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      border-radius: 50%;
+      background: var(--card);
+    }
+    .grade-circle .grade-text { position: relative; z-index: 1; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .stat-box {
+      background: var(--card2);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-box .stat-val { font-size: 28px; font-weight: 900; color: var(--gold); }
+    .stat-box .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    .cem-quote {
+      background: var(--card2);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 12px 12px 0;
+      padding: 16px 18px;
+      font-size: 15px;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .cem-quote .quote-src { margin-top: 8px; font-size: 13px; color: var(--muted); font-style: normal; }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>Efeyi (beyaz atlı prensin) seviyor musun🧑‍⚖️</h1>
 
-    <div class="arena" id="arena">
-      <button class="yes" id="yesBtn">❤️ Evet ❤️</button>
-      <button class="no" id="noBtn">Hayır 😡</button>
+<!-- INTRO -->
+<div id="screen-intro" class="screen active">
+  <div class="emoji">🎤</div>
+  <h1>Cem Yılmaz<br>Bilgi Yarışması</h1>
+  <p class="subtitle">Kaç soruyu bileceksin?</p>
+
+  <div class="card">
+    <div class="rules">
+      <div class="rule-item"><span class="icon">❓</span> 15 soru, karışık kategoriler</div>
+      <div class="rule-item"><span class="icon">⏱️</span> Her soru için 15 saniye</div>
+      <div class="rule-item"><span class="icon">💰</span> Doğru cevap = 10 puan</div>
+      <div class="rule-item"><span class="icon">🔥</span> Arka arkaya 3 doğru → bonus puan</div>
     </div>
   </div>
 
-  <script>
-    const arena = document.getElementById("arena");
-    const noBtn  = document.getElementById("noBtn");
-    const yesBtn = document.getElementById("yesBtn");
+  <button class="btn btn-gold" onclick="startGame()">Oyunu Başlat 🎭</button>
+</div>
 
-    let noScale = 1;
-    let attempts = 0;
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen">
+  <div class="meta-row">
+    <span class="q-counter" id="q-counter">Soru 1 / 15</span>
+    <div id="timer-display">15</div>
+  </div>
 
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
+  <div class="progress-bar-wrap">
+    <div id="progress-bar" style="width:0%"></div>
+  </div>
+
+  <div class="card" style="gap:16px; display:flex; flex-direction:column;">
+    <div style="text-align:center;">
+      <span class="category-badge" id="cat-badge">Kategori</span>
+    </div>
+    <p id="question-text">Soru buraya gelecek</p>
+    <div id="options-grid"></div>
+  </div>
+
+  <div class="score-strip">
+    <span class="lbl">🔥 Seri</span>
+    <span class="val" id="streak-val">0</span>
+    <span class="lbl" style="text-align:right;">Puan</span>
+    <span class="val" id="live-score">0</span>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <h1>Sonuç 🏆</h1>
+
+  <div class="card" style="align-items:center; display:flex; flex-direction:column; gap:20px;">
+    <div class="grade-circle" id="grade-circle" style="--pct:0">
+      <span class="grade-text" id="grade-text">0%</span>
+    </div>
+    <h2 id="result-title" style="text-align:center;"></h2>
+    <p id="result-subtitle" style="text-align:center;"></p>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-score">0</div>
+      <div class="stat-lbl">Toplam Puan</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-correct">0/15</div>
+      <div class="stat-lbl">Doğru Cevap</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-streak">0</div>
+      <div class="stat-lbl">En Uzun Seri</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-time">0sn</div>
+      <div class="stat-lbl">Ort. Süre</div>
+    </div>
+  </div>
+
+  <div class="cem-quote" id="end-quote">
+    <div id="quote-text"></div>
+    <div class="quote-src" id="quote-src"></div>
+  </div>
+
+  <button class="btn btn-gold" onclick="restartGame()">Tekrar Oyna 🔄</button>
+  <button class="btn btn-outline" onclick="showIntro()">Ana Menü</button>
+</div>
+
+<!-- Feedback toast -->
+<div id="feedback"></div>
+
+<script>
+const ALL_QUESTIONS = [
+  // === HAYATI ===
+  {
+    cat: "📅 Hayatı",
+    q: "Cem Yılmaz hangi şehirde doğdu?",
+    opts: ["İstanbul", "Ankara", "Çerkezköy, Tekirdağ", "İzmir"],
+    ans: 2
+  },
+  {
+    cat: "📅 Hayatı",
+    q: "Cem Yılmaz'ın doğum tarihi hangisidir?",
+    opts: ["5 Mart 1975", "5 Nisan 1973", "15 Nisan 1970", "5 Nisan 1971"],
+    ans: 1
+  },
+  {
+    cat: "📅 Hayatı",
+    q: "Cem Yılmaz sahneye çıkmadan önce hangi sanatsal alanda çalıştı?",
+    opts: ["Müzisyen", "Ressam", "Karikatürist", "Yazar"],
+    ans: 2
+  },
+  {
+    cat: "📅 Hayatı",
+    q: "Cem Yılmaz'ın ilk büyük stand-up şovunu verdiği dönem hangisidir?",
+    opts: ["1980'ler", "1990'lar", "2000'ler", "2010'lar"],
+    ans: 1
+  },
+  // === FİLMLER ===
+  {
+    cat: "🎬 Filmler",
+    q: "G.O.R.A. filmi hangi yıl vizyona girdi?",
+    opts: ["2002", "2003", "2004", "2005"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "Cem Yılmaz, G.O.R.A.'da hangi karakteri canlandırdı?",
+    opts: ["Garavel", "Logar", "Arif", "Bob Marley"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "G.O.R.A. filminin yönetmeni kimdir?",
+    opts: ["Cem Yılmaz", "Yılmaz Erdoğan", "Ömer Faruk Sorak", "Ferzan Özpetek"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "A.R.O.G. filmi hangi yıl vizyona girdi?",
+    opts: ["2006", "2007", "2008", "2009"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "A.R.O.G. filminin konusu nedir?",
+    opts: ["Uzay macerası", "Taş devrine giden zaman yolcusu", "Vahşi Batı'da geçen macera", "Osmanlı döneminde geçen hikaye"],
+    ans: 1
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "\"Yahşi Batı\" filmi hangi dönemi konu almaktadır?",
+    opts: ["Osmanlı dönemi", "Birinci Dünya Savaşı", "Vahşi Batı / Kuzey Amerika", "Rönesans dönemi"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "Cem Yılmaz'ın \"Pek Yakında\" filmi hangi yıl çıktı?",
+    opts: ["2012", "2013", "2014", "2015"],
+    ans: 2
+  },
+  {
+    cat: "🎬 Filmler",
+    q: "G.O.R.A.'daki kötü karakter \"Bob Marley\"yi kim oynuyor?",
+    opts: ["Cem Özer", "Ozan Güven", "Zafer Algöz", "Bülent Kayabaş"],
+    ans: 2
+  },
+  // === STAND-UP / REPLİKLER ===
+  {
+    cat: "🎤 Stand-up",
+    q: "\"Bak bak bak bak!\" repliği Cem Yılmaz'ın hangi karakterine aittir?",
+    opts: ["Almanyalı Türk", "Adanalı", "Zengin İstanbullu", "Köylü"],
+    ans: 1
+  },
+  {
+    cat: "🎤 Stand-up",
+    q: "Cem Yılmaz'ın stand-up'larında \"Adanalı\" karakterini ne tür kişi olarak tanımlar?",
+    opts: ["Çekingen ve utangaç", "Alfa görüntüsü veren, abartılı konuşan", "Aşırı mütevazı", "Sürekli ağlayan"],
+    ans: 1
+  },
+  {
+    cat: "🎤 Stand-up",
+    q: "Cem Yılmaz'ın en bilinen stand-up karakterlerinden \"Adanalı\" aksan olarak neyi taklit eder?",
+    opts: ["Karadeniz aksanı", "Ege aksanı", "Güney/Çukurova aksanı", "Doğu Anadolu aksanı"],
+    ans: 2
+  },
+  {
+    cat: "🎤 Stand-up",
+    q: "G.O.R.A. filminde \"Capsüle gel capsüle!\" repliği hangi karaktere aittir?",
+    opts: ["Arif", "Garavel", "Bob Marley", "Logar"],
+    ans: 2
+  },
+  {
+    cat: "🎤 Stand-up",
+    q: "Cem Yılmaz stand-up'larında sık sık hangi tema üzerinde espri yapar?",
+    opts: ["Spor", "Gündelik Türk yaşamı ve ilişkiler", "Teknoloji ve bilim", "Tarih"],
+    ans: 1
+  },
+  // === NETFLIX / DİZİLER ===
+  {
+    cat: "📺 Netflix",
+    q: "Cem Yılmaz'ın yönettiği Netflix Türkiye dizisi hangisidir?",
+    opts: ["Midnight at the Pera Palace", "Erşan Kuneri", "Fatma", "Bir Başkadır"],
+    ans: 1
+  },
+  {
+    cat: "📺 Netflix",
+    q: "\"Erşan Kuneri\" dizisinde Cem Yılmaz hangi rolü üstleniyor?",
+    opts: ["Yönetmen", "Başrol oyuncusu ve yaratıcı yapımcı", "Sadece yapımcı", "Senarist"],
+    ans: 1
+  },
+  {
+    cat: "📺 Netflix",
+    q: "Erşan Kuneri dizisi hangi dönemi ve ortamı konu alır?",
+    opts: ["Modern İstanbul dedektifliği", "1970'ler Türkiye'sinde düşük bütçeli film yapımı", "Osmanlı saray entrikası", "2000'ler rock müzik dünyası"],
+    ans: 1
+  },
+  // === GENEL TRİVİA ===
+  {
+    cat: "🌟 Genel",
+    q: "Cem Yılmaz aynı zamanda hangi alanda eser vermiştir?",
+    opts: ["Mimarlık", "Karikatür ve çizgi roman", "Spor antrenörlüğü", "Mühendislik"],
+    ans: 1
+  },
+  {
+    cat: "🌟 Genel",
+    q: "Cem Yılmaz'ın G.O.R.A. filmi için senaryoyu kim yazdı?",
+    opts: ["Ömer Faruk Sorak", "Yılmaz Erdoğan", "Cem Yılmaz'ın kendisi", "Ferzan Özpetek"],
+    ans: 2
+  },
+  {
+    cat: "🌟 Genel",
+    q: "Cem Yılmaz'ın stand-up gösterilerinde genellikle hangi dili kullanır?",
+    opts: ["Ağırlıklı İngilizce", "Türkçe, zaman zaman İngilizce sözcükler", "Sadece argolu Türkçe", "Tamamen resmi Türkçe"],
+    ans: 1
+  },
+  {
+    cat: "🌟 Genel",
+    q: "Cem Yılmaz sahne ismi midir, yoksa gerçek adı mıdır?",
+    opts: ["Sahne ismi, gerçek adı farklı", "Gerçek adıdır", "Kısaltılmış sahne ismi", "Nüfus cüzdanındaki ikinci ismi"],
+    ans: 1
+  },
+  {
+    cat: "🌟 Genel",
+    q: "G.O.R.A. ve A.R.O.G. filmlerinin ortak özelliği nedir?",
+    opts: ["İkisi de aşk filmidir", "İkisi de Cem Yılmaz'ın yönettiği filmlerdir", "İkisi de bilim kurgu unsurları içerir ve Cem Yılmaz başroldedir", "İkisi de Amerikan yapımıdır"],
+    ans: 2
+  }
+];
+
+const END_QUOTES = [
+  { text: "Bak bak bak bak! Beni durdurmaya çalışıyorsunuz ama ben hep buradayım.", src: "— Adanalı karakteri" },
+  { text: "Hayat kısa, güldür insanı. Ağlatmak zaten kendisi geliyor.", src: "— Cem Yılmaz" },
+  { text: "Uzayda kimse seni duymaz... ama salonda herkes güler.", src: "— G.O.R.A. ruhu" },
+  { text: "Capsüle gel capsüle! Bilgiyle dolu bir beyin en güçlü silah.", src: "— G.O.R.A." },
+  { text: "Şov bitmez arkadaş, perde kapanır ama alkış devam eder.", src: "— Cem Yılmaz sahne finali" },
+];
+
+// Game state
+let questions = [];
+let current = 0;
+let score = 0;
+let streak = 0;
+let maxStreak = 0;
+let correctCount = 0;
+let timerInterval = null;
+let timeLeft = 15;
+let questionStartTime = 0;
+let totalTime = 0;
+let answered = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showIntro() {
+  showScreen('screen-intro');
+}
+
+function startGame() {
+  questions = shuffle(ALL_QUESTIONS).slice(0, 15);
+  current = 0;
+  score = 0;
+  streak = 0;
+  maxStreak = 0;
+  correctCount = 0;
+  totalTime = 0;
+  showScreen('screen-quiz');
+  loadQuestion();
+}
+
+function restartGame() {
+  startGame();
+}
+
+function loadQuestion() {
+  answered = false;
+  const q = questions[current];
+  const total = questions.length;
+
+  document.getElementById('q-counter').textContent = `Soru ${current + 1} / ${total}`;
+  document.getElementById('progress-bar').style.width = `${(current / total) * 100}%`;
+  document.getElementById('cat-badge').textContent = q.cat;
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('streak-val').textContent = streak;
+  document.getElementById('live-score').textContent = score;
+
+  const letters = ['A', 'B', 'C', 'D'];
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  const shuffledOpts = shuffle(q.opts.map((o, i) => ({ text: o, orig: i })));
+
+  shuffledOpts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span>${opt.text}`;
+    btn.dataset.orig = opt.orig;
+    btn.onclick = () => selectAnswer(btn, opt.orig === q.ans, shuffledOpts, q.ans);
+    grid.appendChild(btn);
+  });
+
+  startTimer();
+  questionStartTime = Date.now();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = 15;
+  const display = document.getElementById('timer-display');
+  display.textContent = timeLeft;
+  display.classList.remove('warning');
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    display.textContent = timeLeft;
+    if (timeLeft <= 5) display.classList.add('warning');
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timeExpired();
     }
+  }, 1000);
+}
 
-    function moveNo(aggressive = false) {
-      const a = arena.getBoundingClientRect();
-      const b = noBtn.getBoundingClientRect();
-      const pad = 10;
+function timeExpired() {
+  if (answered) return;
+  answered = true;
+  totalTime += 15;
+  const q = questions[current];
+  // Highlight correct answer
+  document.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.disabled = true;
+    if (parseInt(btn.dataset.orig) === q.ans) btn.classList.add('correct');
+  });
+  streak = 0;
+  showFeedback('⏰ Süre doldu!', 'wrong');
+  setTimeout(nextQuestion, 1600);
+}
 
-      const speedBoost = clamp(attempts * 0.15, 0, 2);
-      const jumps = aggressive ? 2 + speedBoost : 1;
+function selectAnswer(btn, isCorrect, shuffledOpts, correctOrig) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
 
-      for (let i = 0; i < jumps; i++) {
-        const maxX = a.width - b.width - pad;
-        const maxY = a.height - b.height - pad;
+  const elapsed = (Date.now() - questionStartTime) / 1000;
+  totalTime += elapsed;
 
-        const x = pad + Math.random() * Math.max(0, maxX);
-        const y = pad + Math.random() * Math.max(0, maxY);
+  document.querySelectorAll('.opt-btn').forEach(b => {
+    b.disabled = true;
+    if (parseInt(b.dataset.orig) === correctOrig) b.classList.add('correct');
+  });
 
-        noBtn.style.left = x + "px";
-        noBtn.style.top  = y + "px";
-      }
+  if (isCorrect) {
+    btn.classList.add('correct');
+    correctCount++;
+    streak++;
+    if (streak > maxStreak) maxStreak = streak;
+    let pts = 10;
+    if (streak >= 3) pts = 15; // streak bonus
+    score += pts;
+    document.getElementById('live-score').textContent = score;
+    document.getElementById('streak-val').textContent = streak;
+    const msg = streak >= 3 ? `🔥 +${pts} puan! ${streak} seri!` : `✅ Doğru! +${pts} puan`;
+    showFeedback(msg, 'correct');
+  } else {
+    btn.classList.add('wrong');
+    streak = 0;
+    document.getElementById('streak-val').textContent = 0;
+    showFeedback('❌ Yanlış!', 'wrong');
+  }
 
-      noBtn.style.transform = `translate(0,0) scale(${noScale})`;
-    }
+  setTimeout(nextQuestion, 1600);
+}
 
-    function shrinkAndRun() {
-      attempts++;
-      noScale = clamp(1 - attempts * 0.1, 0.35, 1);
-      noBtn.style.transform = `translate(0,0) scale(${noScale})`;
-      moveNo(true);
-    }
+function nextQuestion() {
+  current++;
+  if (current >= questions.length) {
+    showResult();
+  } else {
+    loadQuestion();
+  }
+}
 
-    // Yaklaşınca kaç
-    noBtn.addEventListener("mouseenter", () => moveNo(true));
-    noBtn.addEventListener("mousemove",  () => moveNo(true));
+function showFeedback(msg, type) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.classList.remove('show'); }, 1400);
+}
 
-    // Basma denemesinde küçül + daha agresif kaç
-    noBtn.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      shrinkAndRun();
-    });
+function showResult() {
+  showScreen('screen-result');
+  const total = questions.length;
+  const pct = Math.round((correctCount / total) * 100);
+  const avgTime = correctCount > 0 ? (totalTime / total).toFixed(1) : '0.0';
 
-    noBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      shrinkAndRun();
-    }, { passive: false });
+  document.getElementById('stat-score').textContent = score;
+  document.getElementById('stat-correct').textContent = `${correctCount}/${total}`;
+  document.getElementById('stat-streak').textContent = maxStreak;
+  document.getElementById('stat-time').textContent = `${avgTime}sn`;
 
-    // EVET → direkt WhatsApp
-    yesBtn.addEventListener("click", () => {
-      const phoneNumber = "905378398025";
-      const message = encodeURIComponent("seni seviyorum ❤️❤️❤️❤️");
-      window.location.href = `https://wa.me/${phoneNumber}?text=${message}`;
-    });
+  const circle = document.getElementById('grade-circle');
+  circle.style.setProperty('--pct', pct);
+  document.getElementById('grade-text').textContent = `${pct}%`;
 
-    moveNo(true);
-    window.addEventListener("resize", () => moveNo(true));
-  </script>
+  let title, subtitle;
+  if (pct === 100) { title = "Mükemmel! 🏆"; subtitle = "Cem Yılmaz'ın kendisi bile bu kadar bilemezdi!"; }
+  else if (pct >= 80) { title = "Harika! 🎭"; subtitle = "\"Bak bak bak!\" — Adanalı karakteri seni tebrik ediyor."; }
+  else if (pct >= 60) { title = "İyi iş çıkardın 👏"; subtitle = "Bir sonraki şovda daha hazırlıklı olacaksın!"; }
+  else if (pct >= 40) { title = "Fena değil 🎤"; subtitle = "Capsüle gir, biraz daha Cem Yılmaz izle!"; }
+  else if (pct >= 20) { title = "Az kaldı 😅"; subtitle = "G.O.R.A. ve A.R.O.G.'u tekrar izleme vakti!"; }
+  else { title = "Komik değil bu 😂"; subtitle = "Gel tekrar başlayalım, bu sefer daha iyi!"; }
+
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-subtitle').textContent = subtitle;
+
+  const quote = END_QUOTES[Math.floor(Math.random() * END_QUOTES.length)];
+  document.getElementById('quote-text').textContent = `"${quote.text}"`;
+  document.getElementById('quote-src').textContent = quote.src;
+}
+</script>
 </body>
 </html>
