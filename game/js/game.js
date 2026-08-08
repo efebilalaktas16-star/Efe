@@ -77,31 +77,62 @@
   const eraseBtn = document.getElementById('eraseBtn');
   const resetBtn = document.getElementById('resetBtn');
   const testBtn = document.getElementById('testBtn');
+  const rotateBtn = document.getElementById('rotateBtn');
+  const modeBadge = document.getElementById('modeBadge');
 
   levelTitle.textContent = `Seviye 1 · ${level.name}`;
   levelGoalText.textContent = level.goalText;
 
   const BUILDING_HEIGHT = 26;
-  const originX = level.rows * (TILE_W / 2) + TILE_W / 2;
-  const originY = TILE_H;
+  // Genişlik/yükseklik toplamı (rows+cols) döndürmede değişmediği için canvas boyutu sabit kalabilir.
   canvas.width = (level.cols + level.rows) * (TILE_W / 2) + TILE_W;
   canvas.height = (level.cols + level.rows) * (TILE_H / 2) + TILE_H + BUILDING_HEIGHT + 24;
 
+  // ---- Kamera döndürme (0=0°, 1=90°, 2=180°, 3=270°) ----
+  let rotation = 0;
+
+  function rotateRC(r, c) {
+    switch (rotation) {
+      case 1: return { dr: c, dc: level.rows - 1 - r };
+      case 2: return { dr: level.rows - 1 - r, dc: level.cols - 1 - c };
+      case 3: return { dr: level.cols - 1 - c, dc: r };
+      default: return { dr: r, dc: c };
+    }
+  }
+
+  function unrotateRC(dr, dc) {
+    switch (rotation) {
+      case 1: return { r: level.rows - 1 - dc, c: dr };
+      case 2: return { r: level.rows - 1 - dr, c: level.cols - 1 - dc };
+      case 3: return { r: dc, c: level.cols - 1 - dr };
+      default: return { r: dr, c: dc };
+    }
+  }
+
+  function effRows() {
+    return rotation % 2 === 0 ? level.rows : level.cols;
+  }
+
   function isoCenter(r, c) {
+    const { dr, dc } = rotateRC(r, c);
+    const originX = effRows() * (TILE_W / 2) + TILE_W / 2;
+    const originY = TILE_H;
     return {
-      x: originX + (c - r) * (TILE_W / 2),
-      y: originY + (c + r) * (TILE_H / 2),
+      x: originX + (dc - dr) * (TILE_W / 2),
+      y: originY + (dc + dr) * (TILE_H / 2),
     };
   }
 
   function screenToTile(px, py) {
+    const originX = effRows() * (TILE_W / 2) + TILE_W / 2;
+    const originY = TILE_H;
     const dx = px - originX;
     const dy = py - originY;
-    const a = dx / (TILE_W / 2); // c - r
-    const b = dy / (TILE_H / 2); // c + r
-    const c = Math.round((a + b) / 2);
-    const r = Math.round((b - a) / 2);
-    return { r, c };
+    const a = dx / (TILE_W / 2); // dc - dr
+    const b = dy / (TILE_H / 2); // dc + dr
+    const dc = Math.round((a + b) / 2);
+    const dr = Math.round((b - a) / 2);
+    return unrotateRC(dr, dc);
   }
 
   function paletteFor(r, c) {
@@ -122,6 +153,14 @@
   let testStartedAt = 0;
   let spawnTimer = null;
   let animHandle = null;
+  let viewMode = 'blueprint'; // 'blueprint' (yapım) | 'render' (deneme)
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    modeBadge.textContent = mode === 'render' ? 'DENEME MODU' : 'YAPIM MODU';
+    modeBadge.classList.toggle('render', mode === 'render');
+    draw();
+  }
 
   function key(r, c) {
     return `${r},${c}`;
@@ -219,6 +258,14 @@
   }
 
   function draw() {
+    if (viewMode === 'render') {
+      drawRender();
+    } else {
+      drawBlueprint();
+    }
+  }
+
+  function drawRender() {
     ctx.fillStyle = '#0b1220';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -245,6 +292,77 @@
 
     // arabalar
     cars.forEach((car) => drawCar(car));
+  }
+
+  // ---- Çizim (yapım modu — mimari plan/blueprint) ----
+  function drawHatchedDiamond(cx, cy, w, h, strokeColor) {
+    ctx.save();
+    diamondPath(cx, cy, w, h);
+    ctx.clip();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    for (let i = -4; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2 + i * 10, cy - h);
+      ctx.lineTo(cx - w / 2 + i * 10 + h * 2, cy + h);
+      ctx.stroke();
+    }
+    ctx.restore();
+    diamondPath(cx, cy, w, h);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+  }
+
+  function drawBlueprint() {
+    ctx.fillStyle = '#0a1a30';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let r = 0; r < level.rows; r++) {
+      for (let c = 0; c < level.cols; c++) {
+        const { x, y } = isoCenter(r, c);
+        const t = level.grid[r][c];
+
+        if (t === BUILDING) {
+          drawHatchedDiamond(x, y, TILE_W, TILE_H, 'rgba(148, 197, 235, 0.35)');
+          continue;
+        }
+
+        const road = roads.get(key(r, c));
+        diamondPath(x, y, TILE_W, TILE_H);
+        ctx.fillStyle = road ? 'rgba(56, 189, 248, 0.16)' : 'rgba(148, 197, 235, 0.035)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(148, 197, 235, 0.22)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        if (road) {
+          const def = ROAD_TYPES[road.type];
+          ctx.strokeStyle = road.type === 'avenue' ? '#fbbf24' : '#7dd3fc';
+          ctx.lineWidth = road.type === 'avenue' ? 3 : 1.75;
+          ctx.beginPath();
+          ctx.moveTo(x - TILE_W / 2.4, y - TILE_H / 2.4);
+          ctx.lineTo(x + TILE_W / 2.4, y + TILE_H / 2.4);
+          ctx.stroke();
+        }
+
+        if (t === SPAWN) drawBlueprintLabel(x, y, 'EV', '#4ade80');
+        if (t === DEST) drawBlueprintLabel(x, y, 'İŞ', '#38bdf8');
+      }
+    }
+  }
+
+  function drawBlueprintLabel(x, y, text, color) {
+    diamondPath(x, y, TILE_W * 0.78, TILE_H * 0.78);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = '700 11px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+    ctx.textAlign = 'left';
   }
 
   function roundRect(x, y, w, h, r) {
@@ -433,6 +551,7 @@
     }
     path = found;
     testing = true;
+    setViewMode('render');
     cars = [];
     occupancy = new Map();
     spawnedCount = 0;
@@ -554,10 +673,15 @@
   retryBtn.addEventListener('click', () => {
     resultOverlay.classList.remove('show');
     cars = [];
-    draw();
+    setViewMode('blueprint');
   });
 
   testBtn.addEventListener('click', startTest);
+
+  rotateBtn.addEventListener('click', () => {
+    rotation = (rotation + 1) % 4;
+    draw();
+  });
 
   let messageTimer = null;
   function flashMessage(msg) {
@@ -572,5 +696,5 @@
 
   selectTool('normal');
   recomputeMoney();
-  draw();
+  setViewMode('blueprint');
 })();
