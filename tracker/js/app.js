@@ -183,6 +183,7 @@
         tracker.start(selectedRoute ? 'route' : 'free', selectedRoute);
         setControlsState('tracking');
         renderSnapshot(tracker.getSnapshot());
+        WakeLock.request();
 
         motionPermPromise
           .then((state) => {
@@ -208,18 +209,21 @@
   els.pauseBtn.addEventListener('click', () => {
     tracker.pause();
     Pedometer.stop();
+    WakeLock.release();
     setControlsState('paused');
   });
 
   els.resumeBtn.addEventListener('click', () => {
     tracker.resume();
     Pedometer.start(() => tracker.addSteps(1));
+    WakeLock.request();
     setControlsState('tracking');
   });
 
   els.stopBtn.addEventListener('click', () => {
     const summary = tracker.stop();
     Pedometer.stop();
+    WakeLock.release();
     setControlsState('finished');
     if (summary && summary.elapsedMs > 3000) {
       HistoryManager.saveActivity(summary, calcCalories(summary));
@@ -250,6 +254,14 @@
 
   setControlsState('idle');
   tryInitialFix();
+
+  // Sekme kısa süreliğine gizlenip (ör. bildirim ekranı) tekrar görünür olduğunda
+  // tarayıcı Wake Lock'u otomatik serbest bırakmış olabilir; takip sürüyorsa yeniden iste.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && tracker.state === 'tracking') {
+      WakeLock.request();
+    }
+  });
 
   // ---- Service worker ----
   if ('serviceWorker' in navigator) {

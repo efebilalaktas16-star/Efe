@@ -106,7 +106,12 @@
         </div>
 
         <div id="routeDrawWrap" style="display:none">
+          <label class="toggle-row" for="roadSnapToggle">
+            <input type="checkbox" id="roadSnapToggle" checked />
+            <span>🛣️ Yola entegre çiz (yaya yollarını takip et)</span>
+          </label>
           <div id="drawMap"></div>
+          <p class="road-status" id="drawRoadStatus"></p>
           <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
             <div class="stat-cell">
               <div class="stat-value" id="drawDistance">0.00</div>
@@ -114,7 +119,7 @@
             </div>
             <div class="stat-cell">
               <div class="stat-value" id="drawPointCount">0</div>
-              <div class="stat-label">Nokta</div>
+              <div class="stat-label">İşaret</div>
             </div>
           </div>
           <div class="controls">
@@ -125,7 +130,7 @@
             <button class="btn btn-danger" id="cancelDrawBtn" type="button">✕ İptal</button>
             <button class="btn btn-primary" id="finishDrawBtn" type="button">✓ Bitti, Kaydet</button>
           </div>
-          <p class="hint">Haritaya dokunarak nokta ekle. Markerı sürükleyerek taşıyabilir, üzerine dokunup silebilirsin. İlk nokta başlangıç/bitiş sayılır (tur sayacı buraya göre çalışır).</p>
+          <p class="hint">Haritaya dokunarak nokta ekle. "Yola entegre çiz" açıkken noktalar arası en yakın yaya yoluna oturtulur. Markerı sürükleyerek taşıyabilir, üzerine dokunup silebilirsin. İlk nokta başlangıç/bitiş sayılır (tur sayacı buraya göre çalışır).</p>
         </div>
       </section>
 
@@ -222,6 +227,7 @@
   <script src="js/mapview.js"></script>
   <script src="js/activity.js"></script>
   <script src="js/pedometer.js"></script>
+  <script src="js/wakelock.js"></script>
   <script src="js/app.js"></script>
   <script src="js/routes.js"></script>
   <script src="js/history.js"></script>
