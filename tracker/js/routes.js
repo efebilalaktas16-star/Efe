@@ -8,10 +8,14 @@
   let pendingRouteToSave = null;
 
   let drawMapView = null;
-  let draftPoints = [];
+  let draftWaypoints = []; // kullanıcının haritaya dokunarak eklediği işaretler
+  let draftPath = []; // çizilecek/kaydedilecek gerçek yol (yola oturmuşsa OSRM'den gelir)
   let draftMarkersLayer = null;
   let draftPolyline = null;
   let drawClickHandler = null;
+  let roadSnapFetchToken = 0;
+
+  const OSRM_FOOT_URL = 'https://router.project-osrm.org/route/v1/foot/';
 
   const els = {
     routesListWrap: document.getElementById('routesListWrap'),
@@ -28,6 +32,8 @@
     routeDrawWrap: document.getElementById('routeDrawWrap'),
     drawDistance: document.getElementById('drawDistance'),
     drawPointCount: document.getElementById('drawPointCount'),
+    drawRoadStatus: document.getElementById('drawRoadStatus'),
+    roadSnapToggle: document.getElementById('roadSnapToggle'),
     undoDrawPointBtn: document.getElementById('undoDrawPointBtn'),
     clearDrawBtn: document.getElementById('clearDrawBtn'),
     cancelDrawBtn: document.getElementById('cancelDrawBtn'),
@@ -207,7 +213,23 @@
     });
   }
 
-  function redrawDraft() {
+  function setRoadStatus(text) {
+    els.drawRoadStatus.textContent = text || '';
+  }
+
+  // OSRM (halka açık, ücretsiz yaya rota servisi) ile işaretler arasını gerçek
+  // yollara oturtur. İstek başarısız olursa düz çizgiye düşer.
+  async function fetchRoadSnappedPath(waypoints) {
+    const coordStr = waypoints.map((p) => `${p.lng},${p.lat}`).join(';');
+    const url = `${OSRM_FOOT_URL}${coordStr}?overview=full&geometries=geojson`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('osrm_http_' + resp.status);
+    const data = await resp.json();
+    if (data.code !== 'Ok' || !data.routes || !data.routes[0]) throw new Error('osrm_no_route');
+    return data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+  }
+
+  function drawMarkersAndPolyline() {
     const map = drawMapView.map;
 
     if (draftMarkersLayer) {
@@ -215,19 +237,19 @@
     }
     draftMarkersLayer = L.layerGroup().addTo(map);
 
-    draftPoints.forEach((pt, i) => {
+    draftWaypoints.forEach((pt, i) => {
       const marker = L.marker([pt.lat, pt.lng], {
         icon: draftIcon(i, i === 0),
         draggable: true,
       });
       marker.on('dragend', () => {
         const ll = marker.getLatLng();
-        draftPoints[i] = { lat: ll.lat, lng: ll.lng };
-        redrawDraft();
+        draftWaypoints[i] = { lat: ll.lat, lng: ll.lng };
+        updateDraftPath();
       });
       marker.on('click', () => {
-        draftPoints.splice(i, 1);
-        redrawDraft();
+        draftWaypoints.splice(i, 1);
+        updateDraftPath();
       });
       marker.addTo(draftMarkersLayer);
     });
@@ -236,29 +258,61 @@
       map.removeLayer(draftPolyline);
       draftPolyline = null;
     }
-    if (draftPoints.length >= 2) {
+    const linePoints = draftPath.length >= 2 ? draftPath : draftWaypoints;
+    if (linePoints.length >= 2) {
       draftPolyline = L.polyline(
-        draftPoints.map((p) => [p.lat, p.lng]),
-        { color: '#0ea5e9', weight: 4, opacity: 0.85, dashArray: '2 8' }
+        linePoints.map((p) => [p.lat, p.lng]),
+        { color: '#0ea5e9', weight: 5, opacity: 0.9, dashArray: '1 9', lineCap: 'round' }
       ).addTo(map);
     }
 
-    els.drawDistance.textContent = Fmt.km(routeDistanceM(draftPoints));
-    els.drawPointCount.textContent = draftPoints.length;
+    const distanceSource = draftPath.length >= 2 ? draftPath : draftWaypoints;
+    els.drawDistance.textContent = Fmt.km(routeDistanceM(distanceSource));
+    els.drawPointCount.textContent = draftWaypoints.length;
+  }
+
+  // Her işaret eklendiğinde/taşındığında/silindiğinde çağrılır.
+  async function updateDraftPath() {
+    const useRoadSnap = els.roadSnapToggle.checked;
+
+    if (draftWaypoints.length < 2 || !useRoadSnap) {
+      draftPath = draftWaypoints.slice();
+      setRoadStatus('');
+      drawMarkersAndPolyline();
+      return;
+    }
+
+    const myToken = ++roadSnapFetchToken;
+    setRoadStatus('Yol hesaplanıyor…');
+    drawMarkersAndPolyline();
+
+    try {
+      const path = await fetchRoadSnappedPath(draftWaypoints);
+      if (myToken !== roadSnapFetchToken) return; // bu arada yeni bir değişiklik oldu
+      draftPath = path;
+      setRoadStatus('');
+    } catch (err) {
+      if (myToken !== roadSnapFetchToken) return;
+      draftPath = draftWaypoints.slice();
+      setRoadStatus('Yol rotası alınamadı, düz çizgi kullanıldı.');
+    }
+    drawMarkersAndPolyline();
   }
 
   function startDrawing() {
     els.routesListWrap.style.display = 'none';
     els.routeDrawWrap.style.display = 'block';
-    draftPoints = [];
+    draftWaypoints = [];
+    draftPath = [];
+    setRoadStatus('');
 
     ensureDrawMap();
     drawMapView.invalidateSize();
-    redrawDraft();
+    drawMarkersAndPolyline();
 
     drawClickHandler = (e) => {
-      draftPoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
-      redrawDraft();
+      draftWaypoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+      updateDraftPath();
     };
     drawMapView.map.on('click', drawClickHandler);
 
@@ -283,28 +337,36 @@
   els.drawRouteBtn.addEventListener('click', startDrawing);
 
   els.undoDrawPointBtn.addEventListener('click', () => {
-    draftPoints.pop();
-    redrawDraft();
+    draftWaypoints.pop();
+    updateDraftPath();
   });
 
   els.clearDrawBtn.addEventListener('click', () => {
-    draftPoints = [];
-    redrawDraft();
+    draftWaypoints = [];
+    draftPath = [];
+    setRoadStatus('');
+    drawMarkersAndPolyline();
+  });
+
+  els.roadSnapToggle.addEventListener('change', () => {
+    updateDraftPath();
   });
 
   els.cancelDrawBtn.addEventListener('click', () => {
     stopDrawing();
-    draftPoints = [];
+    draftWaypoints = [];
+    draftPath = [];
   });
 
   els.finishDrawBtn.addEventListener('click', () => {
-    if (draftPoints.length < 2) {
+    if (draftWaypoints.length < 2) {
       AppToast('En az 2 nokta işaretlemelisin.');
       return;
     }
-    const points = draftPoints.slice();
+    const points = (draftPath.length >= 2 ? draftPath : draftWaypoints).slice();
     stopDrawing();
-    draftPoints = [];
+    draftWaypoints = [];
+    draftPath = [];
     openRouteNameModal(points);
   });
 
