@@ -3,6 +3,15 @@ const EMPTY = 0;
 const BUILDING = 1;
 const SPAWN = 2;
 const DEST = 3;
+const AMBIENT = 4; // şehrin hazır, oyuncunun silemediği yolu — üzerinde kendi trafiği döner
+
+// col sabit bir sütun boyunca, rowStart..rowEnd (dahil) arası dikey bir
+// "hazır cadde" tanımı üretir — ambientRoad alanı için kullanılır.
+function verticalAmbientRoad(col, rowStart, rowEnd) {
+  const tiles = [];
+  for (let r = rowStart; r <= rowEnd; r++) tiles.push([r, col]);
+  return tiles;
+}
 
 // obstacles: [rowStart, colStart, rowEnd, colEnd] dikdörtgenleri (dahil).
 // holes: obstacles'ın İÇİNDEN açılan, geçilebilir "tünel" kareleri — dar bir
@@ -32,16 +41,19 @@ const LEVEL_DEFS = [
     id: 'level2',
     name: 'Sıkışık Merkez',
     goalText:
-      'Merkezdeki bloğun ortasından dar bir tünel geçer. 🚐 Minibüsler de var — normal yoldan geçemezler, güzergahın tamamı bulvar olmalı.',
+      'Merkezdeki bloğun ortasından dar bir tünel geçer. 🚐 Minibüsler var — güzergahın tamamı bulvar olmalı. 🟣 9. sütun şehrin hazır ana caddesi, kendi trafiği var; oradan ücretsiz geçebilirsin ama bekleyebilirsin de — ya da güneyden (10-13. satır) dolanıp caddeyi hiç kesme.',
     cols: 12,
     rows: 14,
     obstacles: [[3, 3, 10, 8]],
     holes: [[6, 3, 6, 8]], // 6. satır boyunca tünel (kısa ama trafiğin tamamı buradan geçer)
+    ambientRoad: verticalAmbientRoad(9, 0, 9), // 9. sütun, 0-9. satırlar arası hazır cadde
+    ambientCapacity: 2,
+    ambientSpawnIntervalMs: 900,
     spawn: { row: 6, col: 0 },
     dest: { row: 6, col: 11 },
     totalCars: 26,
     spawnIntervalMs: 320,
-    testDurationMs: 24000,
+    testDurationMs: 29000,
     moveDurationMs: 400,
     passCompletionRatio: 0.85,
     traffic: ['car', 'car', 'van'],
@@ -89,6 +101,9 @@ function buildLevelGrid(def) {
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) grid[r][c] = EMPTY;
     }
+  });
+  (def.ambientRoad || []).forEach(([r, c]) => {
+    if (grid[r][c] === EMPTY) grid[r][c] = AMBIENT;
   });
   grid[def.spawn.row][def.spawn.col] = SPAWN;
   grid[def.dest.row][def.dest.col] = DEST;
