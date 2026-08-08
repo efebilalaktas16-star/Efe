@@ -70,7 +70,7 @@
     if (routes.length === 0) {
       els.routesList.innerHTML = `
         <div class="empty-state">
-          <div class="big">🛣️</div>
+          <div class="icon" style="width:48px;height:48px;margin:0 auto 10px;color:var(--text-dim)">${Icons.set.map}</div>
           <p>Henüz kayıtlı parkurun yok. Yürüyerek kaydet ya da haritada çizerek ilk parkurunu oluştur.</p>
         </div>`;
       return;
@@ -88,8 +88,8 @@
             </div>
           </div>
           <div class="controls" style="padding:12px 0 0;">
-            <button class="btn btn-primary" data-start-route="${r.id}" type="button">▶ Başla</button>
-            <button class="btn btn-secondary" data-delete-route="${r.id}" type="button">🗑 Sil</button>
+            <button class="btn btn-primary" data-start-route="${r.id}" type="button">${Icons.markup('play')}Başla</button>
+            <button class="btn btn-secondary" data-delete-route="${r.id}" type="button">${Icons.markup('trash')}Sil</button>
           </div>
         </div>`;
       })
