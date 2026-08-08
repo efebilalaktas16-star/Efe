@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>Yürüyüş &amp; Koşu Takip</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="description" content="iPhone için kişisel yürüyüş ve koşu takip PWA'sı." />
+
+  <!-- iOS "Ana Ekrana Ekle" desteği -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Koşu Takip" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <h1 id="topbarTitle">Ana Ekran</h1>
+      <button class="icon-btn" id="settingsBtn" aria-label="Ayarlar" type="button">⚙️</button>
+    </header>
+
+    <div class="screens">
+      <!-- ANA EKRAN -->
+      <section class="screen active" id="screen-home">
+        <div id="routeBanner" class="route-banner" style="display:none">
+          <span><span class="pill" id="routeBannerPill">Parkur</span> <span id="routeBannerName"></span></span>
+          <button class="link-btn" id="clearSelectedRouteBtn" type="button">Kaldır</button>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="stat-grid">
+          <div class="stat-cell wide">
+            <div class="stat-value" id="statDuration">00:00</div>
+            <div class="stat-label">Süre</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value" id="statDistance">0.00</div>
+            <div class="stat-label">Mesafe (km)</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value" id="statPace">--:--</div>
+            <div class="stat-label">Anlık Tempo (dk/km)</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value small" id="statAvgPace">--:--</div>
+            <div class="stat-label">Ort. Tempo (dk/km)</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value small" id="statCalories">0</div>
+            <div class="stat-label">Kalori (kcal)</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value small" id="statSteps">0</div>
+            <div class="stat-label">Adım</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value small" id="statLaps">0</div>
+            <div class="stat-label">Tur</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary btn-block" id="startBtn" type="button">▶ Başla</button>
+          <button class="btn btn-warn" id="pauseBtn" type="button" style="display:none">⏸ Duraklat</button>
+          <button class="btn btn-primary" id="resumeBtn" type="button" style="display:none">▶ Devam</button>
+          <button class="btn btn-danger" id="stopBtn" type="button" style="display:none">■ Bitir</button>
+        </div>
+        <p class="hint" id="homeHint">Başlamadan önce Parkurlar sekmesinden bir parkur seçebilir ya da serbest antrenman yapabilirsin.</p>
+      </section>
+
+      <!-- PARKURLAR -->
+      <section class="screen" id="screen-routes">
+        <div class="section-pad" id="routesListWrap">
+          <button class="btn btn-primary btn-block" id="newRouteBtn" type="button">📍 Yeni Parkur Oluştur</button>
+          <p class="hint" style="padding:12px 0 0">Yürüyüşe/koşuya başla, GPS noktalarını kaydedip parkuru bir isimle kaydedeceğiz. Sonra bu parkuru seçip tur sayacıyla antrenman yapabilirsin.</p>
+          <div id="routesList" style="margin-top:14px"></div>
+        </div>
+
+        <div id="routeRecordWrap" style="display:none">
+          <div id="routeMap"></div>
+          <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="stat-cell">
+              <div class="stat-value" id="routeRecDistance">0.00</div>
+              <div class="stat-label">Mesafe (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="routeRecDuration">00:00</div>
+              <div class="stat-label">Süre</div>
+            </div>
+          </div>
+          <div class="controls">
+            <button class="btn btn-danger" id="cancelRouteBtn" type="button">✕ İptal</button>
+            <button class="btn btn-primary" id="finishRouteBtn" type="button">■ Kaydet</button>
+          </div>
+          <p class="hint"><span class="rec-dot"></span>Parkur kaydediliyor... Turu tamamlayınca "Kaydet"e bas.</p>
+        </div>
+      </section>
+
+      <!-- GEÇMİŞ -->
+      <section class="screen" id="screen-history">
+        <div class="section-pad">
+          <div class="summary-grid">
+            <div class="stat-cell">
+              <div class="stat-value" id="histWeekKm">0.0</div>
+              <div class="stat-label">Bu Hafta (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="histMonthKm">0.0</div>
+              <div class="stat-label">Bu Ay (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="histTotalCount">0</div>
+              <div class="stat-label">Antrenman</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap">
+            <h3>Son 7 Gün · Mesafe (km)</h3>
+            <canvas id="weekChart" height="160"></canvas>
+          </div>
+
+          <div id="historyList"></div>
+        </div>
+      </section>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab-btn active" data-tab="home" type="button">
+        <span class="tab-icon">🏠</span>Ana Ekran
+      </button>
+      <button class="tab-btn" data-tab="routes" type="button">
+        <span class="tab-icon">🛣️</span>Parkurlar
+      </button>
+      <button class="tab-btn" data-tab="history" type="button">
+        <span class="tab-icon">📊</span>Geçmiş
+      </button>
+    </nav>
+  </div>
+
+  <!-- Konum izni açıklama ekranı -->
+  <div class="overlay" id="locationPermOverlay">
+    <div class="sheet center">
+      <div class="emoji">📍</div>
+      <h2>Konum İzni Gerekli</h2>
+      <p>
+        Mesafe, tempo ve rota çizimi için konumuna ihtiyacımız var. iPhone bir izin
+        penceresi gösterecek; "Uygulamayı Kullanırken İzin Ver" seçeneğini onayla.
+        Veriler sadece telefonunda saklanır, hiçbir sunucuya gönderilmez.
+      </p>
+      <div class="form-actions">
+        <button class="btn btn-primary btn-block" id="grantLocationBtn" type="button">Konuma İzin Ver</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parkur adı kaydetme -->
+  <div class="overlay" id="routeNameOverlay">
+    <div class="sheet">
+      <h2>Parkuru Kaydet</h2>
+      <p>Bu parkura bir isim ver, listede bununla görünecek.</p>
+      <input type="text" id="routeNameInput" maxlength="40" placeholder="Örn. Sahil Turu" />
+      <div class="form-actions">
+        <button class="btn btn-secondary btn-block" id="discardRouteBtn" type="button">Vazgeç</button>
+        <button class="btn btn-primary btn-block" id="confirmSaveRouteBtn" type="button">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ayarlar -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="sheet">
+      <h2>Ayarlar</h2>
+      <p>Kalori tahmini için kilonu gir.</p>
+      <input type="number" id="weightInput" min="30" max="250" placeholder="Kilo (kg)" />
+      <div class="form-actions">
+        <button class="btn btn-secondary btn-block" id="closeSettingsBtn" type="button">Kapat</button>
+        <button class="btn btn-primary btn-block" id="saveSettingsBtn" type="button">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/geo.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/mapview.js"></script>
+  <script src="js/activity.js"></script>
+  <script src="js/pedometer.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/routes.js"></script>
+  <script src="js/history.js"></script>
+</body>
+</html>
