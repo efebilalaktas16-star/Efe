@@ -157,6 +157,9 @@ body {
   border: 2px solid #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .draft-marker.start {
