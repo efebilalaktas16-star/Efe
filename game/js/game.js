@@ -1,14 +1,10 @@
-// Trafik Ustası — Seviye 1 prototipi.
+// Trafik Ustası — çoklu seviye.
 // Basit ızgara tabanlı şehir: boş karelere yol çiz, arabalar evden işyerine aksın,
 // ne kadar az paraya çözersen o kadar çok yıldız kazan.
 (function () {
   // İzometrik (SimCity tarzı) döşeme boyutları — klasik 2:1 oranı.
   const TILE_W = 48;
   const TILE_H = 24;
-  const EMPTY = 0;
-  const BUILDING = 1;
-  const SPAWN = 2;
-  const DEST = 3;
 
   const ROAD_TYPES = {
     normal: { cost: 10, capacity: 1, color: '#5b6472', edge: '#3f4652' },
@@ -22,46 +18,17 @@
     { top: '#8fa8a0', left: '#546862', right: '#688079' },
   ];
 
-  // ---- Seviye 1 tanımı ----
-  function buildLevel1() {
-    const cols = 10;
-    const rows = 14;
-    const grid = [];
-    for (let r = 0; r < rows; r++) {
-      const row = [];
-      for (let c = 0; c < cols; c++) row.push(EMPTY);
-      grid.push(row);
-    }
-    // Şehir merkezi bloğu (bina) — düz yol gitmeyi engeller, üstten ya da alttan dolanman gerekir.
-    for (let r = 4; r <= 9; r++) {
-      for (let c = 3; c <= 6; c++) grid[r][c] = BUILDING;
-    }
-    const spawn = { row: 6, col: 0 };
-    const dest = { row: 6, col: 9 };
-    grid[spawn.row][spawn.col] = SPAWN;
-    grid[dest.row][dest.col] = DEST;
-
-    return {
-      name: 'Küçük Kasaba',
-      goalText: 'Evlerden işyerine giden bir yol kur.',
-      cols,
-      rows,
-      grid,
-      spawn,
-      dest,
-      totalCars: 12,
-      spawnIntervalMs: 900,
-      testDurationMs: 20000,
-      moveDurationMs: 400,
-      passCompletionRatio: 0.85,
-      stars3Max: 160,
-      stars2Max: 230,
-    };
-  }
-
-  const level = buildLevel1();
+  let level = null;
+  let levelIndex = 0;
 
   // ---- DOM ----
+  const levelSelectScreen = document.getElementById('levelSelectScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const levelList = document.getElementById('levelList');
+  const backToLevelsBtn = document.getElementById('backToLevelsBtn');
+  const levelsBtn = document.getElementById('levelsBtn');
+  const nextLevelBtn = document.getElementById('nextLevelBtn');
+
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const moneyDisplay = document.getElementById('moneyDisplay');
@@ -80,13 +47,7 @@
   const rotateBtn = document.getElementById('rotateBtn');
   const modeBadge = document.getElementById('modeBadge');
 
-  levelTitle.textContent = `Seviye 1 · ${level.name}`;
-  levelGoalText.textContent = level.goalText;
-
   const BUILDING_HEIGHT = 26;
-  // Genişlik/yükseklik toplamı (rows+cols) döndürmede değişmediği için canvas boyutu sabit kalabilir.
-  canvas.width = (level.cols + level.rows) * (TILE_W / 2) + TILE_W;
-  canvas.height = (level.cols + level.rows) * (TILE_H / 2) + TILE_H + BUILDING_HEIGHT + 24;
 
   // ---- Kamera döndürme (0=0°, 1=90°, 2=180°, 3=270°) ----
   let rotation = 0;
@@ -530,6 +491,7 @@
   }
 
   function handleUp() {
+    if (!level) return;
     clearPressTimer();
     painting = false;
     lastPaintedTile = null;
@@ -766,6 +728,15 @@
       Harcanan: <strong>₺${money}</strong><br />
       Varan araç: <strong>${completedCount}/${spawnedCount}</strong> (%${Math.round(ratio * 100)})
     `;
+
+    if (stars > 0) {
+      Progress.setStars(level.id, stars);
+      const hasNext = levelIndex < LEVELS.length - 1;
+      nextLevelBtn.style.display = hasNext ? '' : 'none';
+    } else {
+      nextLevelBtn.style.display = 'none';
+    }
+
     resultOverlay.classList.add('show');
   }
 
@@ -773,6 +744,16 @@
     resultOverlay.classList.remove('show');
     cars = [];
     setViewMode('blueprint');
+  });
+
+  levelsBtn.addEventListener('click', () => {
+    resultOverlay.classList.remove('show');
+    showLevelSelect();
+  });
+
+  nextLevelBtn.addEventListener('click', () => {
+    resultOverlay.classList.remove('show');
+    startLevel(levelIndex + 1);
   });
 
   testBtn.addEventListener('click', startTest);
@@ -793,7 +774,72 @@
     }, 2600);
   }
 
-  selectTool('normal');
-  recomputeMoney();
-  setViewMode('blueprint');
+  // ---- Seviye seçimi / geçişleri ----
+  function stopTestIfRunning() {
+    if (!testing) return;
+    testing = false;
+    clearInterval(spawnTimer);
+    cancelAnimationFrame(animHandle);
+    testBtn.disabled = false;
+    testBtn.style.opacity = '1';
+  }
+
+  function startLevel(index) {
+    levelIndex = index;
+    level = LEVELS[index];
+    rotation = 0;
+    roads.clear();
+    cars = [];
+    currentTool = 'normal';
+    resultOverlay.classList.remove('show');
+
+    canvas.width = (level.cols + level.rows) * (TILE_W / 2) + TILE_W;
+    canvas.height = (level.cols + level.rows) * (TILE_H / 2) + TILE_H + BUILDING_HEIGHT + 24;
+
+    levelTitle.textContent = `Seviye ${index + 1} · ${level.name}`;
+    levelGoalText.textContent = level.goalText;
+
+    levelSelectScreen.style.display = 'none';
+    gameScreen.style.display = 'flex';
+
+    selectTool('normal');
+    recomputeMoney();
+    setViewMode('blueprint');
+  }
+
+  function showLevelSelect() {
+    stopTestIfRunning();
+    gameScreen.style.display = 'none';
+    levelSelectScreen.style.display = 'flex';
+    renderLevelList();
+  }
+
+  function renderLevelList() {
+    levelList.innerHTML = LEVELS.map((def, i) => {
+      const unlocked = Progress.isUnlocked(i);
+      const stars = Progress.getStars(def.id);
+      const starsHtml = unlocked
+        ? '★'.repeat(stars) + '☆'.repeat(3 - stars)
+        : '🔒 Önce önceki seviyeyi bitir';
+      return `
+        <div class="level-card ${unlocked ? '' : 'locked'}" data-level-index="${i}">
+          <div class="level-num">${i + 1}</div>
+          <div class="level-info">
+            <h3>${def.name}</h3>
+            <p>${def.goalText}</p>
+          </div>
+          <div class="level-stars">${starsHtml}</div>
+        </div>`;
+    }).join('');
+
+    levelList.querySelectorAll('.level-card:not(.locked)').forEach((card) => {
+      card.addEventListener('click', () => {
+        startLevel(Number(card.getAttribute('data-level-index')));
+      });
+    });
+  }
+
+  backToLevelsBtn.addEventListener('click', showLevelSelect);
+
+  showLevelSelect();
 })();

@@ -9,53 +9,71 @@
 </head>
 <body>
   <div id="app">
-    <header class="topbar">
-      <div>
-        <div class="mode-badge" id="modeBadge">YAPIM MODU</div>
-        <h1 id="levelTitle">Seviye 1 · Küçük Kasaba</h1>
-        <div class="sub" id="levelGoalText">Evlerden işyerine giden bir yol kur.</div>
-      </div>
-      <div class="money" id="moneyDisplay">₺0</div>
-    </header>
+    <!-- SEVİYE SEÇİM EKRANI -->
+    <div id="levelSelectScreen">
+      <header class="topbar">
+        <div>
+          <h1>Trafik Ustası</h1>
+          <div class="sub">Bir seviye seç</div>
+        </div>
+      </header>
+      <div id="levelList" class="level-list"></div>
+    </div>
 
-    <div class="canvas-wrap">
-      <canvas id="game"></canvas>
-      <button class="rotate-btn" id="rotateBtn" type="button" aria-label="Kamerayı döndür">⟳</button>
-      <div class="result-overlay" id="resultOverlay">
-        <div class="result-card">
-          <div class="result-title" id="resultTitle">Seviye Tamamlandı</div>
-          <div class="stars" id="resultStars">☆☆☆</div>
-          <div class="result-stats" id="resultStats"></div>
-          <div class="result-actions">
-            <button class="btn btn-secondary" id="retryBtn" type="button">Tekrar Dene</button>
+    <!-- OYUN EKRANI -->
+    <div id="gameScreen" style="display:none">
+      <header class="topbar">
+        <button class="back-btn" id="backToLevelsBtn" type="button" aria-label="Seviyelere dön">←</button>
+        <div>
+          <div class="mode-badge" id="modeBadge">YAPIM MODU</div>
+          <h1 id="levelTitle">Seviye 1 · Küçük Kasaba</h1>
+          <div class="sub" id="levelGoalText">Evlerden işyerine giden bir yol kur.</div>
+        </div>
+        <div class="money" id="moneyDisplay">₺0</div>
+      </header>
+
+      <div class="canvas-wrap">
+        <canvas id="game"></canvas>
+        <button class="rotate-btn" id="rotateBtn" type="button" aria-label="Kamerayı döndür">⟳</button>
+        <div class="result-overlay" id="resultOverlay">
+          <div class="result-card">
+            <div class="result-title" id="resultTitle">Seviye Tamamlandı</div>
+            <div class="stars" id="resultStars">☆☆☆</div>
+            <div class="result-stats" id="resultStats"></div>
+            <div class="result-actions">
+              <button class="btn btn-secondary" id="retryBtn" type="button">Tekrar Dene</button>
+              <button class="btn btn-secondary" id="levelsBtn" type="button">Seviyeler</button>
+              <button class="btn btn-primary" id="nextLevelBtn" type="button" style="display:none">Sonraki ▶</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="toolbar">
-      <div class="road-picker">
-        <button class="road-btn active" id="roadNormalBtn" type="button" data-cost="10" data-cap="1">
-          <span class="swatch normal"></span>
-          <span>Normal Yol<br /><small>₺10/kare · 1 araç kapasitesi</small></span>
-        </button>
-        <button class="road-btn" id="roadAvenueBtn" type="button" data-cost="25" data-cap="3">
-          <span class="swatch avenue"></span>
-          <span>Bulvar<br /><small>₺25/kare · 3 araç kapasitesi</small></span>
-        </button>
-        <button class="road-btn erase" id="eraseBtn" type="button">
-          <span class="swatch erase"></span>
-          <span>Sil</span>
-        </button>
-      </div>
-      <p class="hint">Haritada boş karelere sürükleyerek yol çiz. Bina bloklarından geçemezsin — etrafından dolanacaksın.</p>
-      <div class="controls">
-        <button class="btn btn-secondary" id="resetBtn" type="button">Sıfırla</button>
-        <button class="btn btn-primary btn-block" id="testBtn" type="button">▶ Testi Başlat</button>
+      <div class="toolbar">
+        <div class="road-picker">
+          <button class="road-btn active" id="roadNormalBtn" type="button" data-cost="10" data-cap="1">
+            <span class="swatch normal"></span>
+            <span>Normal Yol<br /><small>₺10/kare · 1 araç kapasitesi</small></span>
+          </button>
+          <button class="road-btn" id="roadAvenueBtn" type="button" data-cost="25" data-cap="3">
+            <span class="swatch avenue"></span>
+            <span>Bulvar<br /><small>₺25/kare · 3 araç kapasitesi</small></span>
+          </button>
+          <button class="road-btn erase" id="eraseBtn" type="button">
+            <span class="swatch erase"></span>
+            <span>Sil</span>
+          </button>
+        </div>
+        <p class="hint">Haritada boş karelere sürükleyerek yol çiz. Bina bloklarından geçemezsin — etrafından dolanacaksın.</p>
+        <div class="controls">
+          <button class="btn btn-secondary" id="resetBtn" type="button">Sıfırla</button>
+          <button class="btn btn-primary btn-block" id="testBtn" type="button">▶ Testi Başlat</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="js/levels.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
