@@ -130,6 +130,7 @@
   // aynı kareye girmeye çalışırlarsa birbirlerini bekletirler.
   let ambientCars = [];
   let ambientSpawnTimer = null;
+  let ambientSpawnedCount = 0;
   let viewMode = 'blueprint'; // 'blueprint' (yapım) | 'render' (deneme)
 
   function setViewMode(mode) {
@@ -381,6 +382,17 @@
     ctx.closePath();
   }
 
+  // Aynı karede (bulvarda, hazır caddede, ya da kapasite dolunca bekleme
+  // sırasında) birden fazla araç varsa hepsi tam kare merkezine çizilirse
+  // üst üste binip tek araçmış gibi görünür — trafik/kuyruk hiç görünmez
+  // olur. Her aracın kimliğine bağlı sabit bir "şerit" kayması, aynı karede
+  // bekleyen/duran araçları görsel olarak ayırır.
+  function laneOffset(id) {
+    const angle = (id * 2.399963) % (Math.PI * 2); // altın açı — düzenli ızgara yerine dağınık dağılım
+    const radius = 4.5 + (id % 3) * 2.2;
+    return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius * 0.5 };
+  }
+
   function drawCar(car) {
     const now = performance.now();
     const from = isoCenter(car.r, car.c);
@@ -392,6 +404,9 @@
       x = from.x + (to.x - from.x) * t;
       y = from.y + (to.y - from.y) * t;
     }
+    const { dx, dy } = laneOffset(car.id || 0);
+    x += dx;
+    y += dy;
     const vt = VEHICLE_TYPES[car.type];
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     diamondPath(x, y + 3, vt.width + 2, vt.height / 1.4);
@@ -654,6 +669,7 @@
     occupancy = new Map();
     spawnedCount = 0;
     completedCount = 0;
+    ambientSpawnedCount = 0;
     testStartedAt = performance.now();
     testBtn.disabled = true;
     testBtn.style.opacity = '0.5';
@@ -688,6 +704,7 @@
     const type = pickVehicleType();
     occupancy.set(kStart, (occupancy.get(kStart) || 0) + VEHICLE_TYPES[type].weight);
     cars.push({
+      id: spawnedCount,
       type,
       pathIndex: 0,
       r: startTile.r,
@@ -706,7 +723,9 @@
     const occ = occupancy.get(kStart) || 0;
     if (occ + w > tileCapacity(startTile[0], startTile[1])) return; // giriş dolu, bu turu atla
     occupancy.set(kStart, occ + w);
+    ambientSpawnedCount++;
     ambientCars.push({
+      id: ambientSpawnedCount * 7919, // player id'leriyle çakışıp aynı şeride düşmesin diye ayrı sayı uzayı
       type: 'ambient',
       pathIndex: 0,
       r: startTile[0],
