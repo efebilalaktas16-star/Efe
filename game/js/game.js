@@ -2,16 +2,25 @@
 // Basit ızgara tabanlı şehir: boş karelere yol çiz, arabalar evden işyerine aksın,
 // ne kadar az paraya çözersen o kadar çok yıldız kazan.
 (function () {
-  const TILE = 36;
+  // İzometrik (SimCity tarzı) döşeme boyutları — klasik 2:1 oranı.
+  const TILE_W = 48;
+  const TILE_H = 24;
   const EMPTY = 0;
   const BUILDING = 1;
   const SPAWN = 2;
   const DEST = 3;
 
   const ROAD_TYPES = {
-    normal: { cost: 10, capacity: 1, color: '#64748b', lightColor: '#94a3b8' },
-    avenue: { cost: 25, capacity: 3, color: '#f59e0b', lightColor: '#fbbf24' },
+    normal: { cost: 10, capacity: 1, color: '#5b6472', edge: '#3f4652' },
+    avenue: { cost: 25, capacity: 3, color: '#d9a441', edge: '#a97a26' },
   };
+
+  const BUILDING_PALETTE = [
+    { top: '#8b95a8', left: '#565f6f', right: '#6c7688' },
+    { top: '#9aa3b5', left: '#5f6878', right: '#767f92' },
+    { top: '#a3ade0', left: '#666fa0', right: '#7d87bb' },
+    { top: '#8fa8a0', left: '#546862', right: '#688079' },
+  ];
 
   // ---- Seviye 1 tanımı ----
   function buildLevel1() {
@@ -72,8 +81,32 @@
   levelTitle.textContent = `Seviye 1 · ${level.name}`;
   levelGoalText.textContent = level.goalText;
 
-  canvas.width = level.cols * TILE;
-  canvas.height = level.rows * TILE;
+  const BUILDING_HEIGHT = 26;
+  const originX = level.rows * (TILE_W / 2) + TILE_W / 2;
+  const originY = TILE_H;
+  canvas.width = (level.cols + level.rows) * (TILE_W / 2) + TILE_W;
+  canvas.height = (level.cols + level.rows) * (TILE_H / 2) + TILE_H + BUILDING_HEIGHT + 24;
+
+  function isoCenter(r, c) {
+    return {
+      x: originX + (c - r) * (TILE_W / 2),
+      y: originY + (c + r) * (TILE_H / 2),
+    };
+  }
+
+  function screenToTile(px, py) {
+    const dx = px - originX;
+    const dy = py - originY;
+    const a = dx / (TILE_W / 2); // c - r
+    const b = dy / (TILE_H / 2); // c + r
+    const c = Math.round((a + b) / 2);
+    const r = Math.round((b - a) / 2);
+    return { r, c };
+  }
+
+  function paletteFor(r, c) {
+    return BUILDING_PALETTE[(r * 31 + c * 17) % BUILDING_PALETTE.length];
+  }
 
   // ---- Durum ----
   const roads = new Map(); // "r,c" -> { type: 'normal'|'avenue' }
@@ -113,46 +146,102 @@
     moneyDisplay.textContent = `₺${money}`;
   }
 
-  // ---- Çizim ----
+  // ---- Çizim (izometrik) ----
+  function diamondPath(cx, cy, w, h) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - h / 2);
+    ctx.lineTo(cx + w / 2, cy);
+    ctx.lineTo(cx, cy + h / 2);
+    ctx.lineTo(cx - w / 2, cy);
+    ctx.closePath();
+  }
+
+  function drawGroundTile(r, c) {
+    const { x, y } = isoCenter(r, c);
+    const t = level.grid[r][c];
+    const road = roads.get(key(r, c));
+
+    let fill = ((r + c) % 2 === 0) ? '#274b1f' : '#2d5323';
+    if (road) fill = ROAD_TYPES[road.type].color;
+
+    diamondPath(x, y, TILE_W, TILE_H);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = road ? ROAD_TYPES[road.type].edge : 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (road) {
+      // basit şerit çizgisi
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = road.type === 'avenue' ? 2.5 : 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x - TILE_W / 4, y - TILE_H / 4);
+      ctx.lineTo(x + TILE_W / 4, y + TILE_H / 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    if (t === SPAWN) drawBlock(x, y, TILE_W * 0.62, TILE_H * 0.62, 16, { top: '#4ade80', left: '#15803d', right: '#22c55e' });
+    if (t === DEST) drawBlock(x, y, TILE_W * 0.62, TILE_H * 0.62, 22, { top: '#38bdf8', left: '#0369a1', right: '#0ea5e9' });
+  }
+
+  function drawBlock(cx, cy, w, h, height, colors) {
+    const topCy = cy - height;
+    // sağ yüz
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + h / 2);
+    ctx.lineTo(cx + w / 2, cy);
+    ctx.lineTo(cx + w / 2, topCy);
+    ctx.lineTo(cx, topCy + h / 2);
+    ctx.closePath();
+    ctx.fillStyle = colors.right;
+    ctx.fill();
+
+    // sol yüz
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + h / 2);
+    ctx.lineTo(cx - w / 2, cy);
+    ctx.lineTo(cx - w / 2, topCy);
+    ctx.lineTo(cx, topCy + h / 2);
+    ctx.closePath();
+    ctx.fillStyle = colors.left;
+    ctx.fill();
+
+    // çatı
+    diamondPath(cx, topCy, w, h);
+    ctx.fillStyle = colors.top;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
   function draw() {
-    ctx.fillStyle = '#12213a';
+    ctx.fillStyle = '#0b1220';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // zemin karoları (arka plandan öne, r+c artan sırayla)
     for (let r = 0; r < level.rows; r++) {
       for (let c = 0; c < level.cols; c++) {
-        const x = c * TILE;
-        const y = r * TILE;
-        const t = level.grid[r][c];
-
-        if (t === BUILDING) {
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(x + 1, y + 1, TILE - 2, TILE - 2);
-          ctx.fillStyle = '#334155';
-          ctx.fillRect(x + 6, y + 6, TILE - 12, TILE - 12);
-          continue;
-        }
-
-        ctx.fillStyle = '#0e1a2f';
-        ctx.fillRect(x + 1, y + 1, TILE - 2, TILE - 2);
-
-        const road = roads.get(key(r, c));
-        if (road) {
-          const def = ROAD_TYPES[road.type];
-          ctx.fillStyle = def.color;
-          ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 6);
-        }
-
-        if (t === SPAWN) {
-          ctx.fillStyle = '#22c55e';
-          roundRect(x + 5, y + 5, TILE - 10, TILE - 10, 6);
-          ctx.fill();
-        } else if (t === DEST) {
-          ctx.fillStyle = '#0ea5e9';
-          roundRect(x + 5, y + 5, TILE - 10, TILE - 10, 6);
-          ctx.fill();
-        }
+        if (level.grid[r][c] !== BUILDING) drawGroundTile(r, c);
       }
     }
+
+    // binalar — derinlik sırasına göre (r+c artan), böylece öndeki bina arkadakini doğru kapatır
+    const buildings = [];
+    for (let r = 0; r < level.rows; r++) {
+      for (let c = 0; c < level.cols; c++) {
+        if (level.grid[r][c] === BUILDING) buildings.push({ r, c });
+      }
+    }
+    buildings.sort((a, b) => a.r + a.c - (b.r + b.c));
+    buildings.forEach(({ r, c }) => {
+      const { x, y } = isoCenter(r, c);
+      const pal = paletteFor(r, c);
+      drawBlock(x, y, TILE_W * 0.96, TILE_H * 0.96, BUILDING_HEIGHT, pal);
+    });
 
     // arabalar
     cars.forEach((car) => drawCar(car));
@@ -168,23 +257,22 @@
     ctx.closePath();
   }
 
-  function tileCenter(r, c) {
-    return { x: c * TILE + TILE / 2, y: r * TILE + TILE / 2 };
-  }
-
   function drawCar(car) {
     const now = performance.now();
-    const from = tileCenter(car.r, car.c);
+    const from = isoCenter(car.r, car.c);
     let x = from.x;
     let y = from.y;
     if (car.movingTo) {
-      const to = tileCenter(car.movingTo.r, car.movingTo.c);
+      const to = isoCenter(car.movingTo.r, car.movingTo.c);
       const t = Math.min(1, (now - car.moveStartedAt) / level.moveDurationMs);
       x = from.x + (to.x - from.x) * t;
       y = from.y + (to.y - from.y) * t;
     }
-    ctx.fillStyle = car.done ? '#22c55e' : '#f1f5f9';
-    roundRect(x - 7, y - 5, 14, 10, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    diamondPath(x, y + 3, 14, 7);
+    ctx.fill();
+    ctx.fillStyle = car.done ? '#22c55e' : '#f8fafc';
+    roundRect(x - 6, y - 7, 12, 8, 3);
     ctx.fill();
   }
 
@@ -195,7 +283,7 @@
     const scaleY = canvas.height / rect.height;
     const px = (evt.clientX - rect.left) * scaleX;
     const py = (evt.clientY - rect.top) * scaleY;
-    return { r: Math.floor(py / TILE), c: Math.floor(px / TILE) };
+    return screenToTile(px, py);
   }
 
   function applyToolAt(r, c) {
