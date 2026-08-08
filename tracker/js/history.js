@@ -118,7 +118,7 @@ const HistoryManager = (() => {
     if (activities.length === 0) {
       els.historyList.innerHTML = `
         <div class="empty-state">
-          <div class="big">🏃</div>
+          <div class="icon" style="width:48px;height:48px;margin:0 auto 10px;color:var(--text-dim)">${Icons.set.chart}</div>
           <p>Henüz kayıtlı antrenmanın yok. Ana Ekran'dan "Başla" diyerek ilk antrenmanını kaydet.</p>
         </div>`;
       return;
@@ -150,9 +150,13 @@ const HistoryManager = (() => {
             <div class="stat-label">Tempo</div>
           </div>
         </div>
-        <div class="meta" style="margin-top:10px">👟 ${a.steps} adım · 🔁 ${a.laps} tur · 🔥 ${a.calories} kcal</div>
+        <div class="chip-row" style="justify-content:flex-start;margin-top:10px">
+          <div class="chip">${Icons.markup('footprint')}${a.steps} adım</div>
+          <div class="chip">${Icons.markup('repeat')}${a.laps} tur</div>
+          <div class="chip">${Icons.markup('flame')}${a.calories} kcal</div>
+        </div>
         <div class="controls" style="padding:10px 0 0;">
-          <button class="btn btn-secondary btn-block" data-delete-activity="${a.id}" type="button">🗑 Sil</button>
+          <button class="btn btn-secondary btn-block" data-delete-activity="${a.id}" type="button">${Icons.markup('trash')}Sil</button>
         </div>
       </div>`
       )

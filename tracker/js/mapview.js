@@ -5,9 +5,10 @@ function createMapView(containerId) {
     attributionControl: true,
   }).setView([41.015137, 28.97953], 15); // İstanbul varsayılan, konum gelince güncellenecek.
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap katkıda bulunanlar',
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 20,
+    subdomains: 'abcd',
+    attribution: '&copy; OpenStreetMap katkıda bulunanlar &copy; <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(map);
 
   let userMarker = null;

@@ -40,7 +40,16 @@
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
 
     toast: document.getElementById('toast'),
+    heroRing: document.getElementById('heroRing'),
+    splash: document.getElementById('splash'),
+    celebrateOverlay: document.getElementById('celebrateOverlay'),
+    celebrateSub: document.getElementById('celebrateSub'),
   };
+
+  Icons.hydrate(document);
+
+  // Marka açılış ekranı: kısa bir an göster, sonra soldur.
+  setTimeout(() => els.splash.classList.add('hide'), 650);
 
   const tabLabels = { home: 'Ana Ekran', routes: 'Parkurlar', history: 'Geçmiş' };
 
@@ -184,6 +193,13 @@
     els.resumeBtn.style.display = state === 'paused' ? '' : 'none';
     els.stopBtn.style.display = state === 'tracking' || state === 'paused' ? '' : 'none';
     els.homeHint.style.display = state === 'idle' ? '' : 'none';
+    els.heroRing.classList.toggle('tracking', state === 'tracking');
+  }
+
+  function showCelebration(summary) {
+    els.celebrateSub.textContent = `${Fmt.km(summary.distanceM)} km · ${Fmt.duration(summary.elapsedMs)}`;
+    els.celebrateOverlay.classList.add('show');
+    setTimeout(() => els.celebrateOverlay.classList.remove('show'), 2200);
   }
 
   function doStart() {
@@ -246,7 +262,7 @@
     if (summary && summary.elapsedMs > 3000) {
       HistoryManager.saveActivity(summary, calcCalories(summary));
       document.dispatchEvent(new CustomEvent('activity:saved'));
-      showToast(`Antrenman kaydedildi: ${Fmt.km(summary.distanceM)} km`);
+      showCelebration(summary);
     }
     setControlsState('idle');
     selectedRoute = null;
