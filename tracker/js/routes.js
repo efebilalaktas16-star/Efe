@@ -247,28 +247,8 @@
 
       let longPressTimer = null;
       let longPressTriggered = false;
-
-      function clearPressTimer() {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        const el = marker.getElement();
-        if (el) el.classList.remove('pressing');
-      }
-
-      // Basılı tutunca nokta silinir; kısa dokunuş ise başlangıç noktasında
-      // döngüyü kapatmak için kullanılır (aşağıdaki 'click' dinleyicisi).
-      marker.on('mousedown', () => {
-        longPressTriggered = false;
-        const el = marker.getElement();
-        if (el) el.classList.add('pressing');
-        longPressTimer = setTimeout(() => {
-          longPressTriggered = true;
-          draftWaypoints.splice(i, 1);
-          updateDraftPath();
-        }, LONG_PRESS_MS);
-      });
-      marker.on('dragstart', clearPressTimer);
-      marker.on('mouseup', clearPressTimer);
+      let pressStartXY = null;
+      const MOVE_TOLERANCE = 10;
 
       marker.on('dragend', () => {
         const ll = marker.getLatLng();
@@ -283,6 +263,63 @@
         }
       });
       marker.addTo(draftMarkersLayer);
+
+      // NOT: Leaflet'in marker seviyesindeki 'mousedown'/'mouseup' olayları gerçek
+      // iOS Safari dokunuşlarında güvenilir ateşlenmiyor; bu yüzden basılı-tutma
+      // algısını doğrudan DOM'daki touch/mouse olaylarıyla, elemente bağlanarak yapıyoruz.
+      const el = marker.getElement();
+      if (el) {
+        el.style.webkitTouchCallout = 'none';
+
+        const clearPressTimer = () => {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+          pressStartXY = null;
+          el.classList.remove('pressing');
+        };
+        const startPress = (x, y) => {
+          longPressTriggered = false;
+          pressStartXY = { x, y };
+          el.classList.add('pressing');
+          longPressTimer = setTimeout(() => {
+            longPressTriggered = true;
+            clearPressTimer();
+            draftWaypoints.splice(i, 1);
+            updateDraftPath();
+          }, LONG_PRESS_MS);
+        };
+        const movePress = (x, y) => {
+          if (!pressStartXY) return;
+          const dist = Math.hypot(x - pressStartXY.x, y - pressStartXY.y);
+          if (dist > MOVE_TOLERANCE) clearPressTimer();
+        };
+
+        el.addEventListener(
+          'touchstart',
+          (e) => {
+            const t = e.touches[0];
+            if (t) startPress(t.clientX, t.clientY);
+          },
+          { passive: true }
+        );
+        el.addEventListener(
+          'touchmove',
+          (e) => {
+            const t = e.touches[0];
+            if (t) movePress(t.clientX, t.clientY);
+          },
+          { passive: true }
+        );
+        el.addEventListener('touchend', clearPressTimer);
+        el.addEventListener('touchcancel', clearPressTimer);
+
+        el.addEventListener('mousedown', (e) => startPress(e.clientX, e.clientY));
+        el.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
+        el.addEventListener('mouseup', clearPressTimer);
+        el.addEventListener('mouseleave', clearPressTimer);
+
+        marker.on('dragstart', clearPressTimer);
+      }
     });
 
     if (draftPolyline) {
