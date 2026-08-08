@@ -229,6 +229,8 @@
     return data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
   }
 
+  const LONG_PRESS_MS = 500;
+
   function drawMarkersAndPolyline() {
     const map = drawMapView.map;
 
@@ -242,14 +244,43 @@
         icon: draftIcon(i, i === 0),
         draggable: true,
       });
+
+      let longPressTimer = null;
+      let longPressTriggered = false;
+
+      function clearPressTimer() {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        const el = marker.getElement();
+        if (el) el.classList.remove('pressing');
+      }
+
+      // Basılı tutunca nokta silinir; kısa dokunuş ise başlangıç noktasında
+      // döngüyü kapatmak için kullanılır (aşağıdaki 'click' dinleyicisi).
+      marker.on('mousedown', () => {
+        longPressTriggered = false;
+        const el = marker.getElement();
+        if (el) el.classList.add('pressing');
+        longPressTimer = setTimeout(() => {
+          longPressTriggered = true;
+          draftWaypoints.splice(i, 1);
+          updateDraftPath();
+        }, LONG_PRESS_MS);
+      });
+      marker.on('dragstart', clearPressTimer);
+      marker.on('mouseup', clearPressTimer);
+
       marker.on('dragend', () => {
         const ll = marker.getLatLng();
         draftWaypoints[i] = { lat: ll.lat, lng: ll.lng };
         updateDraftPath();
       });
+
       marker.on('click', () => {
-        draftWaypoints.splice(i, 1);
-        updateDraftPath();
+        if (longPressTriggered) return; // basılı tutma zaten sildi
+        if (i === 0 && draftWaypoints.length >= 3) {
+          closeLoopAndFinish();
+        }
       });
       marker.addTo(draftMarkersLayer);
     });
@@ -358,7 +389,7 @@
     draftPath = [];
   });
 
-  els.finishDrawBtn.addEventListener('click', () => {
+  function finishDrawing() {
     if (draftWaypoints.length < 2) {
       AppToast('En az 2 nokta işaretlemelisin.');
       return;
@@ -368,7 +399,17 @@
     draftWaypoints = [];
     draftPath = [];
     openRouteNameModal(points);
-  });
+  }
+
+  // Başlangıç noktasına (marker 1) tekrar dokununca döngüyü kapatır: son
+  // noktadan başlangıca bir kapanış segmenti ekler ("yola entegre" açıksa o
+  // da yola oturtulur), sonra rotayı doğrudan kaydetme ekranına götürür.
+  function closeLoopAndFinish() {
+    draftWaypoints.push({ ...draftWaypoints[0] });
+    updateDraftPath().then(finishDrawing);
+  }
+
+  els.finishDrawBtn.addEventListener('click', finishDrawing);
 
   // ---- Parkur adı kaydetme (her iki akış için ortak) ----
   els.discardRouteBtn.addEventListener('click', () => {
