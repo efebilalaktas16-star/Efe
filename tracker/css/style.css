@@ -164,6 +164,22 @@ body {
   color: #3a2a00;
 }
 
+.pressing .draft-marker {
+  animation: marker-press 0.5s ease forwards;
+}
+
+@keyframes marker-press {
+  from {
+    transform: scale(1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  }
+  to {
+    transform: scale(0.6);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.35);
+    background: var(--red);
+  }
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -547,6 +563,14 @@ input[type="number"] {
   font-size: 20px;
 }
 
+.summary-grid.cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.summary-grid.cols-4 .stat-value {
+  font-size: 16px;
+}
+
 /* ---- Ana Ekran hero istatistik ---- */
 .hero-stat {
   padding: 22px 16px 6px;
@@ -620,17 +644,21 @@ input[type="number"] {
 }
 
 .hero-secondary {
-  display: flex;
-  gap: 28px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
   margin-top: 18px;
+  width: 100%;
+  max-width: 360px;
 }
 
 .hero-sec-item {
   text-align: center;
+  min-width: 0;
 }
 
 .hero-sec-value {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

@@ -136,7 +136,7 @@ const HistoryManager = (() => {
             <div class="meta">${Fmt.dateTime(a.startedAt)}</div>
           </div>
         </div>
-        <div class="summary-grid" style="margin-top:10px; margin-bottom:0;">
+        <div class="summary-grid cols-4" style="margin-top:10px; margin-bottom:0;">
           <div class="stat-cell">
             <div class="stat-value">${a.distanceKm.toFixed(2)}</div>
             <div class="stat-label">km</div>
@@ -148,6 +148,10 @@ const HistoryManager = (() => {
           <div class="stat-cell">
             <div class="stat-value">${Fmt.pace(a.avgPaceSecPerKm)}</div>
             <div class="stat-label">Tempo</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value">${Fmt.speedKmh(a.avgPaceSecPerKm)}</div>
+            <div class="stat-label">km/sa</div>
           </div>
         </div>
         <div class="chip-row" style="justify-content:flex-start;margin-top:10px">

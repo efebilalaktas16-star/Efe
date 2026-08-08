@@ -25,6 +25,7 @@
     statDistance: document.getElementById('statDistance'),
     statPace: document.getElementById('statPace'),
     statAvgPace: document.getElementById('statAvgPace'),
+    statAvgSpeed: document.getElementById('statAvgSpeed'),
     statCalories: document.getElementById('statCalories'),
     statSteps: document.getElementById('statSteps'),
     statLaps: document.getElementById('statLaps'),
@@ -173,6 +174,7 @@
     els.statDistance.textContent = Fmt.km(snap.distanceM);
     els.statPace.textContent = Fmt.pace(snap.instantPaceSecPerKm);
     els.statAvgPace.textContent = Fmt.pace(snap.avgPaceSecPerKm);
+    els.statAvgSpeed.textContent = Fmt.speedKmh(snap.avgPaceSecPerKm);
     els.statCalories.textContent = Fmt.kcal(tracker.getSnapshot ? calcCalories(snap) : 0);
     els.statSteps.textContent = snap.steps;
     els.statLaps.textContent = snap.laps;

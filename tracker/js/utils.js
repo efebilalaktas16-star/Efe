@@ -23,6 +23,14 @@ const Fmt = (() => {
     return (meters / 1000).toFixed(2);
   }
 
+  // Ortalama hız (km/sa). secPerKm, Activity.getAvgPaceSecPerKm() ile aynı birimde.
+  function speedKmh(secPerKm) {
+    if (secPerKm === null || secPerKm === undefined || !isFinite(secPerKm) || secPerKm <= 0) {
+      return '-.-';
+    }
+    return (3600 / secPerKm).toFixed(1);
+  }
+
   function kcal(v) {
     return Math.round(v).toString();
   }
@@ -43,5 +51,5 @@ const Fmt = (() => {
     return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: '2-digit' });
   }
 
-  return { duration, pace, km, kcal, dateTime, dateShort };
+  return { duration, pace, km, speedKmh, kcal, dateTime, dateShort };
 })();
