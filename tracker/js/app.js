@@ -31,6 +31,7 @@
 
     locationPermOverlay: document.getElementById('locationPermOverlay'),
     grantLocationBtn: document.getElementById('grantLocationBtn'),
+    locationDeniedHint: document.getElementById('locationDeniedHint'),
 
     settingsBtn: document.getElementById('settingsBtn'),
     settingsOverlay: document.getElementById('settingsOverlay'),
@@ -98,12 +99,28 @@
 
   // ---- Konum izni ----
   let hasLocationFix = false;
+  let locationDeniedAttempts = 0;
 
   function showLocationPermOverlay() {
     els.locationPermOverlay.classList.add('active');
   }
   function hideLocationPermOverlay() {
     els.locationPermOverlay.classList.remove('active');
+  }
+
+  // İzin isteği reddedilirse (ya da daha önce kalıcı olarak reddedilmişse) tarayıcı
+  // OS izin penceresini bir daha göstermez; kullanıcıya her dokunuşta görünür bir
+  // geri bildirim vermezsek "tıklıyorum ama hiçbir şey olmuyor" hissi oluşur.
+  function handleLocationDenied() {
+    locationDeniedAttempts++;
+    showLocationPermOverlay();
+    els.locationDeniedHint.style.display = locationDeniedAttempts > 1 ? 'block' : 'none';
+    showToast(
+      locationDeniedAttempts > 1
+        ? 'İzin hâlâ kapalı görünüyor. Ayarlar > Gizlilik ve Güvenlik > Konum Servisleri kısmından bu siteye/uygulamaya izin ver.'
+        : 'Konum izni reddedildi.',
+      4500
+    );
   }
 
   function tryInitialFix() {
@@ -114,12 +131,13 @@
     Geo.requestOnce()
       .then((pos) => {
         hasLocationFix = true;
+        locationDeniedAttempts = 0;
         hideLocationPermOverlay();
         mapView.setUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, true);
       })
       .catch((err) => {
         if (err && err.code === 1) {
-          showLocationPermOverlay();
+          handleLocationDenied();
         } else {
           showToast(Geo.errorMessage(err));
         }
@@ -197,7 +215,7 @@
       })
       .catch((err) => {
         if (err && err.code === 1) {
-          showLocationPermOverlay();
+          handleLocationDenied();
         } else {
           showToast(Geo.errorMessage(err));
         }
