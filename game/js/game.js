@@ -350,6 +350,17 @@
         if (t === DEST) drawBlueprintLabel(x, y, 'İŞ', '#38bdf8');
       }
     }
+
+    // Parmağın/imlecin şu an tam hangi kareye denk geldiğini gösteren canlı işaretçi.
+    if (hoverTile && tileType(hoverTile.r, hoverTile.c) !== null && tileType(hoverTile.r, hoverTile.c) !== BUILDING) {
+      const { x, y } = isoCenter(hoverTile.r, hoverTile.c);
+      const isErasePreview =
+        (currentTool === 'erase' || roads.has(key(hoverTile.r, hoverTile.c))) && roads.has(key(hoverTile.r, hoverTile.c));
+      diamondPath(x, y, TILE_W * 1.06, TILE_H * 1.06);
+      ctx.strokeStyle = isErasePreview ? '#f87171' : '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
   }
 
   function drawBlueprintLabel(x, y, text, color) {
@@ -423,19 +434,107 @@
     draw();
   }
 
+  // İki kare arasındaki tüm ara kareleri döndürür (Bresenham) — hızlı sürüklemede
+  // parmağın/imlecin atladığı karelerde boşluk kalmasını önler.
+  function lineTiles(r0, c0, r1, c1) {
+    const tiles = [];
+    let dr = Math.abs(r1 - r0);
+    let dc = Math.abs(c1 - c0);
+    const sr = r0 < r1 ? 1 : -1;
+    const sc = c0 < c1 ? 1 : -1;
+    let err = dr - dc;
+    let r = r0;
+    let c = c0;
+    while (true) {
+      tiles.push({ r, c });
+      if (r === r1 && c === c1) break;
+      const e2 = 2 * err;
+      if (e2 > -dc) {
+        err -= dc;
+        r += sr;
+      }
+      if (e2 < dr) {
+        err += dr;
+        c += sc;
+      }
+    }
+    return tiles;
+  }
+
+  let pressTimer = null;
+  let pressTileKey = null;
+  let lastPaintedTile = null;
+  let hoverTile = null;
+  const LONG_PRESS_ERASE_MS = 450;
+
+  function clearPressTimer() {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+    pressTileKey = null;
+  }
+
+  function eraseTileIfRoad(r, c) {
+    const k = key(r, c);
+    if (roads.has(k)) {
+      roads.delete(k);
+      recomputeMoney();
+    }
+    draw();
+  }
+
   function handleDown(evt) {
     if (testing) return;
-    painting = true;
     const { r, c } = pointToTile(evt);
-    applyToolAt(r, c);
+    hoverTile = { r, c };
+    const existing = roads.get(key(r, c));
+
+    if (currentTool !== 'erase' && existing && existing.type === currentTool) {
+      // Bu karede zaten aynı tip yol var; tek dokunuş bir şey değiştirmez ama
+      // basılı tutarsan siler (uzun basma = sil, tıpkı parkur işaretlerinde olduğu gibi).
+      painting = false;
+      pressTileKey = key(r, c);
+      pressTimer = setTimeout(() => {
+        if (pressTileKey === key(r, c)) eraseTileIfRoad(r, c);
+        pressTimer = null;
+      }, LONG_PRESS_ERASE_MS);
+    } else {
+      painting = true;
+      applyToolAt(r, c);
+    }
+    lastPaintedTile = { r, c };
+    draw();
   }
+
   function handleMove(evt) {
-    if (!painting) return;
+    if (testing) return;
     const { r, c } = pointToTile(evt);
-    applyToolAt(r, c);
+    hoverTile = { r, c };
+
+    if (pressTimer && pressTileKey !== key(r, c)) {
+      // Basılı tutulan kareden ayrıldı — silme iptal, sürükleyerek çizmeye devam.
+      clearPressTimer();
+      painting = true;
+    }
+
+    if (!painting) {
+      draw();
+      return;
+    }
+
+    if (lastPaintedTile) {
+      lineTiles(lastPaintedTile.r, lastPaintedTile.c, r, c).forEach((t) => applyToolAt(t.r, t.c));
+    } else {
+      applyToolAt(r, c);
+    }
+    lastPaintedTile = { r, c };
   }
+
   function handleUp() {
+    clearPressTimer();
     painting = false;
+    lastPaintedTile = null;
+    hoverTile = null;
+    draw();
   }
 
   canvas.addEventListener('mousedown', handleDown);
