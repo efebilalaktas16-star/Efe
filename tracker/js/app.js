@@ -173,6 +173,9 @@
       showToast('Bu cihaz konum servisini desteklemiyor.');
       return;
     }
+    // iOS hareket sensörü izni kullanıcı jestinden hemen (senkron) istenmeli.
+    const motionPermPromise = Pedometer.requestPermission();
+
     Geo.requestOnce()
       .then(() => {
         hasLocationFix = true;
@@ -180,6 +183,16 @@
         tracker.start(selectedRoute ? 'route' : 'free', selectedRoute);
         setControlsState('tracking');
         renderSnapshot(tracker.getSnapshot());
+
+        motionPermPromise
+          .then((state) => {
+            if (state === 'granted') {
+              Pedometer.start(() => tracker.addSteps(1));
+            } else if (state !== 'unsupported') {
+              showToast('Adım sayacı izni verilmedi, adımlar sayılmayacak.');
+            }
+          })
+          .catch(() => {});
       })
       .catch((err) => {
         if (err && err.code === 1) {
@@ -194,19 +207,24 @@
 
   els.pauseBtn.addEventListener('click', () => {
     tracker.pause();
+    Pedometer.stop();
     setControlsState('paused');
   });
 
   els.resumeBtn.addEventListener('click', () => {
     tracker.resume();
+    Pedometer.start(() => tracker.addSteps(1));
     setControlsState('tracking');
   });
 
   els.stopBtn.addEventListener('click', () => {
     const summary = tracker.stop();
+    Pedometer.stop();
     setControlsState('finished');
-    if (summary && summary.distanceM > 5) {
-      showToast(`Antrenman tamamlandı: ${Fmt.km(summary.distanceM)} km`);
+    if (summary && summary.elapsedMs > 3000) {
+      HistoryManager.saveActivity(summary, calcCalories(summary));
+      document.dispatchEvent(new CustomEvent('activity:saved'));
+      showToast(`Antrenman kaydedildi: ${Fmt.km(summary.distanceM)} km`);
     }
     setControlsState('idle');
     selectedRoute = null;

@@ -106,10 +106,27 @@
       <!-- GEÇMİŞ -->
       <section class="screen" id="screen-history">
         <div class="section-pad">
-          <div class="empty-state">
-            <div class="big">📊</div>
-            <p>Geçmiş ve istatistikler bir sonraki güncellemede eklenecek.</p>
+          <div class="summary-grid">
+            <div class="stat-cell">
+              <div class="stat-value" id="histWeekKm">0.0</div>
+              <div class="stat-label">Bu Hafta (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="histMonthKm">0.0</div>
+              <div class="stat-label">Bu Ay (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="histTotalCount">0</div>
+              <div class="stat-label">Antrenman</div>
+            </div>
           </div>
+
+          <div class="chart-wrap">
+            <h3>Son 7 Gün · Mesafe (km)</h3>
+            <canvas id="weekChart" height="160"></canvas>
+          </div>
+
+          <div id="historyList"></div>
         </div>
       </section>
     </div>
@@ -175,9 +192,12 @@
   <script src="js/storage.js"></script>
   <script src="js/geo.js"></script>
   <script src="js/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="js/mapview.js"></script>
   <script src="js/activity.js"></script>
+  <script src="js/pedometer.js"></script>
   <script src="js/app.js"></script>
   <script src="js/routes.js"></script>
+  <script src="js/history.js"></script>
 </body>
 </html>

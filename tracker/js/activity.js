@@ -96,6 +96,8 @@ function createActivityTracker(opts) {
       tickInterval = null;
     }
     const summary = getSnapshot();
+    summary.startedAt = startedAt;
+    summary.endedAt = Date.now();
     return summary;
   }
 
