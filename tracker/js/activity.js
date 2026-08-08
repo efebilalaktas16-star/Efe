@@ -27,6 +27,8 @@ function createActivityTracker(opts) {
   let steps = 0;
   let laps = 0;
   let lapArmed = false;
+  let altitudeSum = 0;
+  let altitudeCount = 0;
 
   function reset() {
     state = 'idle';
@@ -41,6 +43,8 @@ function createActivityTracker(opts) {
     steps = 0;
     laps = 0;
     lapArmed = false;
+    altitudeSum = 0;
+    altitudeCount = 0;
   }
 
   function start(startMode, startRoute) {
@@ -110,10 +114,17 @@ function createActivityTracker(opts) {
   }
 
   function handlePosition(pos) {
-    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    const { latitude: lat, longitude: lng, accuracy, altitude, altitudeAccuracy } = pos.coords;
     const t = pos.timestamp || Date.now();
 
     mapView.setUserLocation(lat, lng, accuracy, true);
+
+    // İrtifa (tahmini): iOS barometre ile desteklediği için genelde makul, ama yine de
+    // gürültülü okumaları ayıklamak için bir doğruluk eşiği uyguluyoruz.
+    if (altitude !== null && altitude !== undefined && (!altitudeAccuracy || altitudeAccuracy <= 25)) {
+      altitudeSum += altitude;
+      altitudeCount += 1;
+    }
 
     if (accuracy && accuracy > minAccuracyM) {
       return; // çok gürültülü, mesafeye katma
@@ -221,6 +232,11 @@ function createActivityTracker(opts) {
     return met * (weightKg || 70) * hours;
   }
 
+  function getAvgAltitudeM() {
+    if (altitudeCount === 0) return null;
+    return altitudeSum / altitudeCount;
+  }
+
   function getSnapshot() {
     return {
       state,
@@ -231,6 +247,7 @@ function createActivityTracker(opts) {
       elapsedMs: getElapsedMs(),
       instantPaceSecPerKm: getInstantPaceSecPerKm(),
       avgPaceSecPerKm: getAvgPaceSecPerKm(),
+      avgAltitudeM: getAvgAltitudeM(),
       steps,
       laps,
     };
