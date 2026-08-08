@@ -18,6 +18,7 @@
     car: { weight: 1, color: '#f8fafc', width: 12, height: 8, label: '🚗 Araba' },
     van: { weight: 2, color: '#38bdf8', width: 14.5, height: 9.5, label: '🚐 Minibüs (bulvar şart)' },
     truck: { weight: 3, color: '#fb923c', width: 17, height: 11, label: '🚛 Kamyon (bulvar şart)' },
+    ambient: { weight: 1, color: '#c084fc', width: 12, height: 8, label: '🟣 Şehir trafiği' },
   };
 
   const BUILDING_PALETTE = [
@@ -124,6 +125,11 @@
   let testStartedAt = 0;
   let spawnTimer = null;
   let animHandle = null;
+  // Şehrin hazır (silinemez) yollarında sürekli dönen bağımsız trafik —
+  // oyuncunun güzergahıyla aynı occupancy haritasını paylaşır, yani gerçekten
+  // aynı kareye girmeye çalışırlarsa birbirlerini bekletirler.
+  let ambientCars = [];
+  let ambientSpawnTimer = null;
   let viewMode = 'blueprint'; // 'blueprint' (yapım) | 'render' (deneme)
 
   function setViewMode(mode) {
@@ -170,21 +176,23 @@
     const { x, y } = isoCenter(r, c);
     const t = level.grid[r][c];
     const road = roads.get(key(r, c));
+    const isAmbient = t === AMBIENT;
 
     let fill = ((r + c) % 2 === 0) ? '#274b1f' : '#2d5323';
     if (road) fill = ROAD_TYPES[road.type].color;
+    if (isAmbient) fill = '#4c3d66';
 
     diamondPath(x, y, TILE_W, TILE_H);
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = road ? ROAD_TYPES[road.type].edge : 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = road ? ROAD_TYPES[road.type].edge : isAmbient ? '#7c5fb0' : 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    if (road) {
+    if (road || isAmbient) {
       // basit şerit çizgisi
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = road.type === 'avenue' ? 2.5 : 1.5;
+      ctx.lineWidth = road && road.type === 'avenue' ? 2.5 : 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(x - TILE_W / 4, y - TILE_H / 4);
@@ -262,6 +270,7 @@
     });
 
     // arabalar
+    ambientCars.forEach((car) => drawCar(car));
     cars.forEach((car) => drawCar(car));
   }
 
@@ -299,6 +308,16 @@
           continue;
         }
 
+        if (t === AMBIENT) {
+          diamondPath(x, y, TILE_W, TILE_H);
+          ctx.fillStyle = 'rgba(192, 132, 252, 0.22)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(192, 132, 252, 0.55)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          continue;
+        }
+
         const road = roads.get(key(r, c));
         diamondPath(x, y, TILE_W, TILE_H);
         ctx.fillStyle = road ? 'rgba(56, 189, 248, 0.16)' : 'rgba(148, 197, 235, 0.035)';
@@ -323,7 +342,12 @@
     }
 
     // Parmağın/imlecin şu an tam hangi kareye denk geldiğini gösteren canlı işaretçi.
-    if (hoverTile && tileType(hoverTile.r, hoverTile.c) !== null && tileType(hoverTile.r, hoverTile.c) !== BUILDING) {
+    if (
+      hoverTile &&
+      tileType(hoverTile.r, hoverTile.c) !== null &&
+      tileType(hoverTile.r, hoverTile.c) !== BUILDING &&
+      tileType(hoverTile.r, hoverTile.c) !== AMBIENT
+    ) {
       const { x, y } = isoCenter(hoverTile.r, hoverTile.c);
       const isErasePreview =
         (currentTool === 'erase' || roads.has(key(hoverTile.r, hoverTile.c))) && roads.has(key(hoverTile.r, hoverTile.c));
@@ -566,7 +590,7 @@
 
   function isTraversable(r, c) {
     const t = tileType(r, c);
-    if (t === SPAWN || t === DEST) return true;
+    if (t === SPAWN || t === DEST || t === AMBIENT) return true;
     return roads.has(key(r, c));
   }
 
@@ -609,6 +633,7 @@
   function tileCapacity(r, c) {
     const t = tileType(r, c);
     if (t === SPAWN || t === DEST) return Infinity;
+    if (t === AMBIENT) return level.ambientCapacity || 1;
     const road = roads.get(key(r, c));
     return road ? ROAD_TYPES[road.type].capacity : 0;
   }
@@ -625,6 +650,7 @@
     testing = true;
     setViewMode('render');
     cars = [];
+    ambientCars = [];
     occupancy = new Map();
     spawnedCount = 0;
     completedCount = 0;
@@ -640,13 +666,19 @@
       spawnCar();
     }, level.spawnIntervalMs);
 
+    if (level.ambientRoad && level.ambientRoad.length > 1) {
+      ambientSpawnTimer = setInterval(spawnAmbientCar, level.ambientSpawnIntervalMs || 600);
+    }
+
     animHandle = requestAnimationFrame(tick);
     setTimeout(endTest, level.testDurationMs);
   }
 
   function pickVehicleType() {
+    // Rastgele değil, sabit bir sırayla döner — aynı rota her denemede aynı
+    // sonucu versin (şans değil, oyuncunun kararı belirleyici olsun).
     const mix = level.traffic || ['car'];
-    return mix[Math.floor(Math.random() * mix.length)];
+    return mix[(spawnedCount - 1) % mix.length];
   }
 
   function spawnCar() {
@@ -666,16 +698,35 @@
     });
   }
 
-  function tick() {
-    if (!testing) return;
-    const now = performance.now();
+  function spawnAmbientCar() {
+    if (!level.ambientRoad || !level.ambientRoad.length) return;
+    const startTile = level.ambientRoad[0];
+    const kStart = key(startTile[0], startTile[1]);
+    const w = VEHICLE_TYPES.ambient.weight;
+    const occ = occupancy.get(kStart) || 0;
+    if (occ + w > tileCapacity(startTile[0], startTile[1])) return; // giriş dolu, bu turu atla
+    occupancy.set(kStart, occ + w);
+    ambientCars.push({
+      type: 'ambient',
+      pathIndex: 0,
+      r: startTile[0],
+      c: startTile[1],
+      movingTo: null,
+      moveStartedAt: 0,
+      done: false,
+    });
+  }
 
-    cars.forEach((car) => {
-      if (car.done) return;
+  // Bir araç dizisini (oyuncunun `cars`'ı ya da şehrin `ambientCars`'ı) verilen
+  // güzergah üzerinde ilerletir; ikisi de aynı `occupancy` haritasını paylaştığı
+  // için ortak karelerde birbirlerini gerçekten bekletirler.
+  function advanceCars(list, route, now, onArrive) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const car = list[i];
+      if (car.done) continue;
 
       if (car.movingTo) {
         if (now - car.moveStartedAt >= level.moveDurationMs) {
-          // hareketi tamamla
           const fromKey = key(car.r, car.c);
           const w = VEHICLE_TYPES[car.type].weight;
           occupancy.set(fromKey, Math.max(0, (occupancy.get(fromKey) || w) - w));
@@ -683,20 +734,26 @@
           car.c = car.movingTo.c;
           car.movingTo = null;
           car.pathIndex++;
-          if (car.pathIndex >= path.length - 1) {
-            car.done = true;
-            completedCount++;
+          if (car.pathIndex >= route.length - 1) {
+            // Güzergahın sonuna vardı — sahneden kalkacağı için üzerinde durduğu
+            // son kareyi de bırakmalı, yoksa kapasite kalıcı olarak sızar.
+            const endKey = key(car.r, car.c);
+            occupancy.set(endKey, Math.max(0, (occupancy.get(endKey) || w) - w));
+            onArrive(car, i);
           }
         }
-        return;
+        continue;
       }
 
-      // sıradaki kareye geçmeyi dene
-      const next = path[car.pathIndex + 1];
-      if (!next) {
-        car.done = true;
-        return;
+      const nextTile = route[car.pathIndex + 1];
+      if (!nextTile) {
+        const w = VEHICLE_TYPES[car.type].weight;
+        const curKey = key(car.r, car.c);
+        occupancy.set(curKey, Math.max(0, (occupancy.get(curKey) || w) - w));
+        onArrive(car, i);
+        continue;
       }
+      const next = Array.isArray(nextTile) ? { r: nextTile[0], c: nextTile[1] } : nextTile;
       const nKey = key(next.r, next.c);
       const cap = tileCapacity(next.r, next.c);
       const occ = occupancy.get(nKey) || 0;
@@ -707,6 +764,21 @@
         car.moveStartedAt = now;
       }
       // kapasite doluysa araç olduğu yerde bekler (bir sonraki tick'te tekrar dener)
+    }
+  }
+
+  function tick() {
+    if (!testing) return;
+    const now = performance.now();
+
+    advanceCars(cars, path, now, (car) => {
+      car.done = true;
+      completedCount++;
+    });
+
+    advanceCars(ambientCars, level.ambientRoad || [], now, (car, i) => {
+      // şehir trafiği bitiş noktasına varınca sahneden kalkar (skor etkilemez).
+      ambientCars.splice(i, 1);
     });
 
     draw();
@@ -717,6 +789,7 @@
     if (!testing) return;
     testing = false;
     clearInterval(spawnTimer);
+    clearInterval(ambientSpawnTimer);
     cancelAnimationFrame(animHandle);
     testBtn.disabled = false;
     testBtn.style.opacity = '1';
@@ -763,6 +836,7 @@
   retryBtn.addEventListener('click', () => {
     resultOverlay.classList.remove('show');
     cars = [];
+    ambientCars = [];
     setViewMode('blueprint');
   });
 
@@ -799,6 +873,7 @@
     if (!testing) return;
     testing = false;
     clearInterval(spawnTimer);
+    clearInterval(ambientSpawnTimer);
     cancelAnimationFrame(animHandle);
     testBtn.disabled = false;
     testBtn.style.opacity = '1';
@@ -810,6 +885,8 @@
     rotation = 0;
     roads.clear();
     cars = [];
+    ambientCars = [];
+    clearInterval(ambientSpawnTimer);
     currentTool = 'normal';
     resultOverlay.classList.remove('show');
 
