@@ -86,7 +86,8 @@ body {
 
 /* ---- Ana ekran ---- */
 #map,
-#routeMap {
+#routeMap,
+#drawMap {
   width: 100%;
   height: 42vh;
   min-height: 220px;
@@ -105,6 +106,27 @@ body {
   background: var(--accent);
   border: 3px solid #fff;
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.35);
+}
+
+.draft-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.draft-marker.start {
+  background: linear-gradient(180deg, var(--yellow), #ca8a04);
+  color: #3a2a00;
 }
 
 .route-banner {
@@ -221,6 +243,11 @@ body {
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
+}
+
+.btn-accent {
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: #fff;
 }
 
 .btn-block {

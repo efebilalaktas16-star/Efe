@@ -78,8 +78,11 @@
       <!-- PARKURLAR -->
       <section class="screen" id="screen-routes">
         <div class="section-pad" id="routesListWrap">
-          <button class="btn btn-primary btn-block" id="newRouteBtn" type="button">📍 Yeni Parkur Oluştur</button>
-          <p class="hint" style="padding:12px 0 0">Yürüyüşe/koşuya başla, GPS noktalarını kaydedip parkuru bir isimle kaydedeceğiz. Sonra bu parkuru seçip tur sayacıyla antrenman yapabilirsin.</p>
+          <div class="controls" style="padding:0">
+            <button class="btn btn-primary" id="newRouteBtn" type="button">🚶 Yürüyerek Kaydet</button>
+            <button class="btn btn-accent" id="drawRouteBtn" type="button">🖊️ Haritada Çiz</button>
+          </div>
+          <p class="hint" style="padding:12px 0 0">Yürüyerek Kaydet: GPS ile hareket ederek rota kaydedilir. Haritada Çiz: yürümeden, haritaya dokunarak istediğin noktaları işaretlersin.</p>
           <div id="routesList" style="margin-top:14px"></div>
         </div>
 
@@ -100,6 +103,29 @@
             <button class="btn btn-primary" id="finishRouteBtn" type="button">■ Kaydet</button>
           </div>
           <p class="hint"><span class="rec-dot"></span>Parkur kaydediliyor... Turu tamamlayınca "Kaydet"e bas.</p>
+        </div>
+
+        <div id="routeDrawWrap" style="display:none">
+          <div id="drawMap"></div>
+          <div class="stat-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="stat-cell">
+              <div class="stat-value" id="drawDistance">0.00</div>
+              <div class="stat-label">Mesafe (km)</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value" id="drawPointCount">0</div>
+              <div class="stat-label">Nokta</div>
+            </div>
+          </div>
+          <div class="controls">
+            <button class="btn btn-secondary" id="undoDrawPointBtn" type="button">↩️ Geri Al</button>
+            <button class="btn btn-secondary" id="clearDrawBtn" type="button">🗑 Temizle</button>
+          </div>
+          <div class="controls">
+            <button class="btn btn-danger" id="cancelDrawBtn" type="button">✕ İptal</button>
+            <button class="btn btn-primary" id="finishDrawBtn" type="button">✓ Bitti, Kaydet</button>
+          </div>
+          <p class="hint">Haritaya dokunarak nokta ekle. Markerı sürükleyerek taşıyabilir, üzerine dokunup silebilirsin. İlk nokta başlangıç/bitiş sayılır (tur sayacı buraya göre çalışır).</p>
         </div>
       </section>
 
