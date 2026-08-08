@@ -20,6 +20,8 @@ const Icons = (() => {
     flame: `<svg viewBox="0 0 24 24" ${OUTLINE}><path d="M12 2c1 3-3 4-3 8a3 3 0 006 0c0-1-1-2-1-2s2 2 2 5a5 5 0 01-10 0c0-5 4-7 4-11z"/></svg>`,
     footprint: `<svg viewBox="0 0 24 24" ${OUTLINE}><ellipse cx="12" cy="7" rx="3" ry="4.5"/><ellipse cx="12" cy="17.5" rx="4" ry="4"/></svg>`,
     repeat: `<svg viewBox="0 0 24 24" ${OUTLINE}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>`,
+    download: `<svg viewBox="0 0 24 24" ${OUTLINE}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+    share: `<svg viewBox="0 0 24 24" ${OUTLINE}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
   };
 
   // Sayfada [data-icon="ad"] olan tüm elemanların içine ilgili SVG'yi enjekte eder.

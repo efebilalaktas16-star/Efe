@@ -550,6 +550,14 @@ input[type="number"] {
   letter-spacing: 0.05em;
 }
 
+.section-title {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
