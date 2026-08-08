@@ -1,7 +1,7 @@
 // Service worker: uygulama kabuğunu önbelleğe alır, internet olmadan da açılabilmesini sağlar.
 // NOT: Harita karoları (OpenStreetMap) ve CDN kütüphaneleri ilk kullanımdan sonra
 // fırsat buldukça (runtime) önbelleğe alınır; tamamen offline harita garantisi yoktur.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `wt-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `wt-runtime-${CACHE_VERSION}`;
 

@@ -52,6 +52,15 @@
   }
   window.AppToast = showToast;
 
+  // GPS sinyali zayıfken watchPosition sürekli hata üretebilir; aynı mesajla spam'i önle.
+  let lastGeoErrorAt = 0;
+  window.AppGeoErrorToast = function (msg) {
+    const now = Date.now();
+    if (now - lastGeoErrorAt < 6000) return;
+    lastGeoErrorAt = now;
+    showToast(msg);
+  };
+
   // ---- Sekmeler ----
   function switchTab(name) {
     Object.entries(els.screens).forEach(([key, el]) => {
@@ -128,7 +137,7 @@
     onLap: (count) => {
       showToast(`Tur tamamlandı: ${count}`);
     },
-    onError: (msg) => showToast(msg),
+    onError: (msg) => window.AppGeoErrorToast(msg),
   });
   window.AppTracker = tracker;
 
