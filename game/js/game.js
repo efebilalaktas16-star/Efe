@@ -11,6 +11,15 @@
     avenue: { cost: 25, capacity: 3, color: '#d9a441', edge: '#a97a26' },
   };
 
+  // Araç ağırlığı = o an bir karede kapladığı kapasite. Normal yol (kapasite 1)
+  // minibüsü (2) veya kamyonu (3) HİÇ taşıyamaz — bu tür trafiği olan
+  // seviyelerde en azından o güzergahın tamamını bulvar yapmak zorunlu olur.
+  const VEHICLE_TYPES = {
+    car: { weight: 1, color: '#f8fafc', width: 12, height: 8, label: '🚗 Araba' },
+    van: { weight: 2, color: '#38bdf8', width: 14.5, height: 9.5, label: '🚐 Minibüs (bulvar şart)' },
+    truck: { weight: 3, color: '#fb923c', width: 17, height: 11, label: '🚛 Kamyon (bulvar şart)' },
+  };
+
   const BUILDING_PALETTE = [
     { top: '#8b95a8', left: '#565f6f', right: '#6c7688' },
     { top: '#9aa3b5', left: '#5f6878', right: '#767f92' },
@@ -38,6 +47,7 @@
   const resultTitle = document.getElementById('resultTitle');
   const resultStars = document.getElementById('resultStars');
   const resultStats = document.getElementById('resultStats');
+  const trafficLegend = document.getElementById('trafficLegend');
   const retryBtn = document.getElementById('retryBtn');
   const roadNormalBtn = document.getElementById('roadNormalBtn');
   const roadAvenueBtn = document.getElementById('roadAvenueBtn');
@@ -358,11 +368,12 @@
       x = from.x + (to.x - from.x) * t;
       y = from.y + (to.y - from.y) * t;
     }
+    const vt = VEHICLE_TYPES[car.type];
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    diamondPath(x, y + 3, 14, 7);
+    diamondPath(x, y + 3, vt.width + 2, vt.height / 1.4);
     ctx.fill();
-    ctx.fillStyle = car.done ? '#22c55e' : '#f8fafc';
-    roundRect(x - 6, y - 7, 12, 8, 3);
+    ctx.fillStyle = car.done ? '#22c55e' : vt.color;
+    roundRect(x - vt.width / 2, y - vt.height - 1, vt.width, vt.height, 3);
     ctx.fill();
   }
 
@@ -633,12 +644,19 @@
     setTimeout(endTest, level.testDurationMs);
   }
 
+  function pickVehicleType() {
+    const mix = level.traffic || ['car'];
+    return mix[Math.floor(Math.random() * mix.length)];
+  }
+
   function spawnCar() {
     spawnedCount++;
     const startTile = path[0];
     const kStart = key(startTile.r, startTile.c);
-    occupancy.set(kStart, (occupancy.get(kStart) || 0) + 1);
+    const type = pickVehicleType();
+    occupancy.set(kStart, (occupancy.get(kStart) || 0) + VEHICLE_TYPES[type].weight);
     cars.push({
+      type,
       pathIndex: 0,
       r: startTile.r,
       c: startTile.c,
@@ -659,7 +677,8 @@
         if (now - car.moveStartedAt >= level.moveDurationMs) {
           // hareketi tamamla
           const fromKey = key(car.r, car.c);
-          occupancy.set(fromKey, Math.max(0, (occupancy.get(fromKey) || 1) - 1));
+          const w = VEHICLE_TYPES[car.type].weight;
+          occupancy.set(fromKey, Math.max(0, (occupancy.get(fromKey) || w) - w));
           car.r = car.movingTo.r;
           car.c = car.movingTo.c;
           car.movingTo = null;
@@ -681,8 +700,9 @@
       const nKey = key(next.r, next.c);
       const cap = tileCapacity(next.r, next.c);
       const occ = occupancy.get(nKey) || 0;
-      if (occ < cap) {
-        occupancy.set(nKey, occ + 1);
+      const w = VEHICLE_TYPES[car.type].weight;
+      if (occ + w <= cap) {
+        occupancy.set(nKey, occ + w);
         car.movingTo = next;
         car.moveStartedAt = now;
       }
@@ -798,6 +818,9 @@
 
     levelTitle.textContent = `Seviye ${index + 1} · ${level.name}`;
     levelGoalText.textContent = level.goalText;
+
+    const trafficTypes = [...new Set(level.traffic || ['car'])];
+    trafficLegend.textContent = 'Trafik: ' + trafficTypes.map((t) => VEHICLE_TYPES[t].label).join(' · ');
 
     levelSelectScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
