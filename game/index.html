@@ -11,6 +11,7 @@
   <div id="app">
     <header class="topbar">
       <div>
+        <div class="mode-badge" id="modeBadge">YAPIM MODU</div>
         <h1 id="levelTitle">Seviye 1 · Küçük Kasaba</h1>
         <div class="sub" id="levelGoalText">Evlerden işyerine giden bir yol kur.</div>
       </div>
@@ -19,6 +20,7 @@
 
     <div class="canvas-wrap">
       <canvas id="game"></canvas>
+      <button class="rotate-btn" id="rotateBtn" type="button" aria-label="Kamerayı döndür">⟳</button>
       <div class="result-overlay" id="resultOverlay">
         <div class="result-card">
           <div class="result-title" id="resultTitle">Seviye Tamamlandı</div>
