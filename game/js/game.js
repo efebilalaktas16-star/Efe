@@ -739,10 +739,16 @@
   // Bir araç dizisini (oyuncunun `cars`'ı ya da şehrin `ambientCars`'ı) verilen
   // güzergah üzerinde ilerletir; ikisi de aynı `occupancy` haritasını paylaştığı
   // için ortak karelerde birbirlerini gerçekten bekletirler.
+  //
+  // Dizi doğuş sırasına göre (en eski önce) taranır — yoksa her tick'te en
+  // yeni doğan hafif araç boş kalan yeri önce kapar, uzun süredir bekleyen
+  // ağır araç (minibüs/kamyon) hiç sırasını bulamaz ("açlık" durumu). Kaldırma
+  // işlemini de döngü sırasında yapmak yerine sona bırakıyoruz ki sıralama
+  // bozulmasın.
   function advanceCars(list, route, now, onArrive) {
-    for (let i = list.length - 1; i >= 0; i--) {
+    for (let i = 0; i < list.length; i++) {
       const car = list[i];
-      if (car.done) continue;
+      if (car.done || car.removed) continue;
 
       if (car.movingTo) {
         if (now - car.moveStartedAt >= level.moveDurationMs) {
@@ -758,7 +764,7 @@
             // son kareyi de bırakmalı, yoksa kapasite kalıcı olarak sızar.
             const endKey = key(car.r, car.c);
             occupancy.set(endKey, Math.max(0, (occupancy.get(endKey) || w) - w));
-            onArrive(car, i);
+            onArrive(car);
           }
         }
         continue;
@@ -769,7 +775,7 @@
         const w = VEHICLE_TYPES[car.type].weight;
         const curKey = key(car.r, car.c);
         occupancy.set(curKey, Math.max(0, (occupancy.get(curKey) || w) - w));
-        onArrive(car, i);
+        onArrive(car);
         continue;
       }
       const next = Array.isArray(nextTile) ? { r: nextTile[0], c: nextTile[1] } : nextTile;
@@ -795,10 +801,13 @@
       completedCount++;
     });
 
-    advanceCars(ambientCars, level.ambientRoad || [], now, (car, i) => {
+    advanceCars(ambientCars, level.ambientRoad || [], now, (car) => {
       // şehir trafiği bitiş noktasına varınca sahneden kalkar (skor etkilemez).
-      ambientCars.splice(i, 1);
+      car.removed = true;
     });
+    if (ambientCars.some((c) => c.removed)) {
+      ambientCars = ambientCars.filter((c) => !c.removed);
+    }
 
     draw();
     animHandle = requestAnimationFrame(tick);
